@@ -43,6 +43,32 @@ class ContractParserTest {
     }
 
     @Test
+    void validatesTheYamlTreeAgainstThePublishedSchema(@TempDir Path directory) throws Exception {
+        var file = directory.resolve("wrong-type.yaml");
+        Files.writeString(
+                file,
+                "version: '1'\nsuite: {name: demo, defaultTimeoutMs: fast}\n"
+                        + "target: {type: http, baseUrl: 'http://localhost'}\n"
+                        + "cases: [{id: one, request: {path: /}, assertions: [{type: httpStatus, equals: 200}]}]\n");
+        var exception =
+                assertThrows(ContractConfigurationException.class, () -> new ContractParser().parse(file, Map.of()));
+        assertTrue(exception.getMessage().contains("contract schema validation failed"));
+        assertTrue(exception.getMessage().contains("defaultTimeoutMs"));
+    }
+
+    @Test
+    void rejectsUnknownAssertionParameters(@TempDir Path directory) throws Exception {
+        var file = directory.resolve("assertion-typo.yaml");
+        Files.writeString(
+                file,
+                "version: '1'\nsuite: {name: demo}\ntarget: {type: http, baseUrl: 'http://localhost'}\n"
+                        + "cases: [{id: one, request: {path: /}, assertions: [{type: httpStatus, equal: 200}]}]\n");
+        var exception =
+                assertThrows(ContractConfigurationException.class, () -> new ContractParser().parse(file, Map.of()));
+        assertTrue(exception.getMessage().contains("equal"));
+    }
+
+    @Test
     void rejectsDuplicateCaseIds(@TempDir Path directory) throws Exception {
         var file = directory.resolve("duplicate.yaml");
         Files.writeString(

@@ -31,6 +31,7 @@
     <maven.compiler.release>21</maven.compiler.release>
     <jackson.version>2.21.0</jackson.version>
     <junit.version>5.13.4</junit.version>
+    <json-schema-validator.version>2.0.4</json-schema-validator.version>
     <picocli.version>4.7.7</picocli.version>
     <slf4j.version>2.0.17</slf4j.version>
   </properties>
@@ -99,4 +100,3 @@
     </plugins>
   </build>
 </project>
-

@@ -36,6 +36,7 @@ public final class ContractParser {
                         .forEachRemaining(entry ->
                                 variables.put(entry.getKey(), entry.getValue().asText()));
             }
+            new ContractSchemaValidator().validate(root, absolutePath);
             variables.putAll(providedVariables);
             interpolate(root, variables, absolutePath.toString());
             var contract = yamlMapper.treeToValue(root, ContractSuite.class);
