@@ -3,11 +3,15 @@ package io.github.acsvhs.aicontract.junit5;
 import io.github.acsvhs.aicontract.core.ContractParser;
 import io.github.acsvhs.aicontract.core.ContractRunner;
 import io.github.acsvhs.aicontract.core.DefaultSecretRedactor;
+import io.github.acsvhs.aicontract.core.assertion.AllowedToolCallsAssertion;
 import io.github.acsvhs.aicontract.core.assertion.ContainsAssertion;
+import io.github.acsvhs.aicontract.core.assertion.ForbiddenToolCallsAssertion;
 import io.github.acsvhs.aicontract.core.assertion.HttpStatusAssertion;
 import io.github.acsvhs.aicontract.core.assertion.JsonPathAssertion;
 import io.github.acsvhs.aicontract.core.assertion.JsonSchemaAssertion;
+import io.github.acsvhs.aicontract.core.assertion.MaxEstimatedCostAssertion;
 import io.github.acsvhs.aicontract.core.assertion.MaxLatencyAssertion;
+import io.github.acsvhs.aicontract.core.assertion.MaxTokensAssertion;
 import io.github.acsvhs.aicontract.core.assertion.RegexAbsentAssertion;
 import io.github.acsvhs.aicontract.http.HttpTargetAdapter;
 import io.github.acsvhs.aicontract.model.ContractSuite;
@@ -65,7 +69,11 @@ public final class AiContractTests {
                         new RegexAbsentAssertion(),
                         new MaxLatencyAssertion(),
                         new JsonSchemaAssertion(),
-                        new JsonPathAssertion()),
+                        new JsonPathAssertion(),
+                        new AllowedToolCallsAssertion(),
+                        new ForbiddenToolCallsAssertion(),
+                        new MaxTokensAssertion(),
+                        new MaxEstimatedCostAssertion()),
                 redactor);
     }
 

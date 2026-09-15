@@ -5,15 +5,22 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.acsvhs.aicontract.core.assertion.AllowedToolCallsAssertion;
 import io.github.acsvhs.aicontract.core.assertion.ContainsAssertion;
+import io.github.acsvhs.aicontract.core.assertion.ForbiddenToolCallsAssertion;
 import io.github.acsvhs.aicontract.core.assertion.HttpStatusAssertion;
 import io.github.acsvhs.aicontract.core.assertion.JsonPathAssertion;
 import io.github.acsvhs.aicontract.core.assertion.JsonSchemaAssertion;
+import io.github.acsvhs.aicontract.core.assertion.MaxEstimatedCostAssertion;
 import io.github.acsvhs.aicontract.core.assertion.MaxLatencyAssertion;
+import io.github.acsvhs.aicontract.core.assertion.MaxTokensAssertion;
 import io.github.acsvhs.aicontract.core.assertion.RegexAbsentAssertion;
+import io.github.acsvhs.aicontract.model.AiResponseMetadata;
 import io.github.acsvhs.aicontract.model.AssertionDefinition;
 import io.github.acsvhs.aicontract.model.ContractCase;
 import io.github.acsvhs.aicontract.model.TargetResponse;
+import io.github.acsvhs.aicontract.model.TokenUsage;
+import io.github.acsvhs.aicontract.model.ToolCall;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -137,6 +144,63 @@ class AssertionsTest {
                 ContractConfigurationException.class,
                 () -> assertion.evaluate(
                         definition("{\"type\":\"jsonSchema\",\"file\":\"remote.schema.json\"}"), localContext));
+    }
+
+    @Test
+    void evaluatesAllowedAndForbiddenToolCalls() throws Exception {
+        var aiContext = context(new TargetResponse(
+                200,
+                Map.of(),
+                "{}",
+                12,
+                new AiResponseMetadata(
+                        List.of(new ToolCall("lookupOrder", "{}"), new ToolCall("deleteCustomer", "{}")),
+                        TokenUsage.unknown())));
+
+        assertFalse(new AllowedToolCallsAssertion()
+                .evaluate(definition("{\"type\":\"allowedToolCalls\",\"names\":[\"lookupOrder\"]}"), aiContext)
+                .passed());
+        assertFalse(new ForbiddenToolCallsAssertion()
+                .evaluate(definition("{\"type\":\"forbiddenToolCalls\",\"names\":[\"deleteCustomer\"]}"), aiContext)
+                .passed());
+        assertTrue(new ForbiddenToolCallsAssertion()
+                .evaluate(definition("{\"type\":\"forbiddenToolCalls\",\"names\":[\"exportDatabase\"]}"), aiContext)
+                .passed());
+    }
+
+    @Test
+    void evaluatesTokenAndUserConfiguredCostLimits() throws Exception {
+        var aiContext = context(new TargetResponse(
+                200, Map.of(), "{}", 12, new AiResponseMetadata(List.of(), new TokenUsage(1_000, 500, 1_500))));
+
+        assertTrue(new MaxTokensAssertion()
+                .evaluate(definition("{\"type\":\"maxTokens\",\"maximum\":1500}"), aiContext)
+                .passed());
+        assertFalse(new MaxTokensAssertion()
+                .evaluate(definition("{\"type\":\"maxTokens\",\"maximum\":1499}"), aiContext)
+                .passed());
+        var cost = definition(
+                """
+                {"type":"maxEstimatedCost","maximum":0.0019,"inputCostPerMillionTokens":1.0,"outputCostPerMillionTokens":2.0,"currency":"USD"}
+                """);
+        assertFalse(new MaxEstimatedCostAssertion().evaluate(cost, aiContext).passed());
+    }
+
+    @Test
+    void failsMetricsAssertionsWhenUsageIsUnavailable() throws Exception {
+        var tokens = new MaxTokensAssertion().evaluate(definition("{\"type\":\"maxTokens\",\"maximum\":10}"), context);
+        var cost = new MaxEstimatedCostAssertion()
+                .evaluate(
+                        definition(
+                                """
+                                {"type":"maxEstimatedCost","maximum":1,"inputCostPerMillionTokens":1,"outputCostPerMillionTokens":1,"currency":"EUR"}
+                                """),
+                        context);
+
+        assertFalse(tokens.passed());
+        assertEquals("unavailable", tokens.actual());
+        assertFalse(cost.passed());
+        assertEquals("unavailable", cost.actual());
     }
 
     private ExecutionContext context(TargetResponse response) {

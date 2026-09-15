@@ -5,11 +5,15 @@ import io.github.acsvhs.aicontract.core.ContractExecutionException;
 import io.github.acsvhs.aicontract.core.ContractParser;
 import io.github.acsvhs.aicontract.core.ContractRunner;
 import io.github.acsvhs.aicontract.core.DefaultSecretRedactor;
+import io.github.acsvhs.aicontract.core.assertion.AllowedToolCallsAssertion;
 import io.github.acsvhs.aicontract.core.assertion.ContainsAssertion;
+import io.github.acsvhs.aicontract.core.assertion.ForbiddenToolCallsAssertion;
 import io.github.acsvhs.aicontract.core.assertion.HttpStatusAssertion;
 import io.github.acsvhs.aicontract.core.assertion.JsonPathAssertion;
 import io.github.acsvhs.aicontract.core.assertion.JsonSchemaAssertion;
+import io.github.acsvhs.aicontract.core.assertion.MaxEstimatedCostAssertion;
 import io.github.acsvhs.aicontract.core.assertion.MaxLatencyAssertion;
+import io.github.acsvhs.aicontract.core.assertion.MaxTokensAssertion;
 import io.github.acsvhs.aicontract.core.assertion.RegexAbsentAssertion;
 import io.github.acsvhs.aicontract.core.report.ConsoleReporter;
 import io.github.acsvhs.aicontract.core.report.JunitXmlReporter;
@@ -129,7 +133,11 @@ public final class AiContractTestMojo extends AbstractMojo {
                         new RegexAbsentAssertion(),
                         new MaxLatencyAssertion(),
                         new JsonSchemaAssertion(),
-                        new JsonPathAssertion()),
+                        new JsonPathAssertion(),
+                        new AllowedToolCallsAssertion(),
+                        new ForbiddenToolCallsAssertion(),
+                        new MaxTokensAssertion(),
+                        new MaxEstimatedCostAssertion()),
                 redactor);
     }
 

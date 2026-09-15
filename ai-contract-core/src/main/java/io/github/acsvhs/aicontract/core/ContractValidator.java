@@ -12,15 +12,30 @@ import java.util.Map;
 import java.util.Set;
 
 public final class ContractValidator {
-    private static final Set<String> ASSERTIONS =
-            Set.of("httpStatus", "contains", "regexAbsent", "maxLatency", "jsonSchema", "jsonPath");
-    private static final Map<String, Set<String>> ASSERTION_PARAMETERS = Map.of(
-            "httpStatus", Set.of("equals", "oneOf"),
-            "contains", Set.of("value"),
-            "regexAbsent", Set.of("patterns"),
-            "maxLatency", Set.of("milliseconds"),
-            "jsonSchema", Set.of("file"),
-            "jsonPath", Set.of("path", "exists", "equals"));
+    private static final Set<String> ASSERTIONS = Set.of(
+            "httpStatus",
+            "contains",
+            "regexAbsent",
+            "maxLatency",
+            "jsonSchema",
+            "jsonPath",
+            "allowedToolCalls",
+            "forbiddenToolCalls",
+            "maxTokens",
+            "maxEstimatedCost");
+    private static final Map<String, Set<String>> ASSERTION_PARAMETERS = Map.ofEntries(
+            Map.entry("httpStatus", Set.of("equals", "oneOf")),
+            Map.entry("contains", Set.of("value")),
+            Map.entry("regexAbsent", Set.of("patterns")),
+            Map.entry("maxLatency", Set.of("milliseconds")),
+            Map.entry("jsonSchema", Set.of("file")),
+            Map.entry("jsonPath", Set.of("path", "exists", "equals")),
+            Map.entry("allowedToolCalls", Set.of("names")),
+            Map.entry("forbiddenToolCalls", Set.of("names")),
+            Map.entry("maxTokens", Set.of("maximum")),
+            Map.entry(
+                    "maxEstimatedCost",
+                    Set.of("maximum", "inputCostPerMillionTokens", "outputCostPerMillionTokens", "currency")));
 
     public void validate(ContractSuite contract, Path file) {
         var errors = new java.util.ArrayList<String>();
@@ -130,6 +145,18 @@ public final class ContractValidator {
             case "maxLatency" -> requireInteger(definition.parameter("milliseconds"), path + ".milliseconds", errors);
             case "jsonSchema" -> requireText(definition.parameter("file"), path + ".file", errors);
             case "jsonPath" -> validateJsonPath(definition, path, errors);
+            case "allowedToolCalls", "forbiddenToolCalls" -> requireNames(definition.parameter("names"), path, errors);
+            case "maxTokens" -> requireInteger(definition.parameter("maximum"), path + ".maximum", errors);
+            case "maxEstimatedCost" -> {
+                requireNumber(definition.parameter("maximum"), path + ".maximum", errors);
+                requireNumber(
+                        definition.parameter("inputCostPerMillionTokens"), path + ".inputCostPerMillionTokens", errors);
+                requireNumber(
+                        definition.parameter("outputCostPerMillionTokens"),
+                        path + ".outputCostPerMillionTokens",
+                        errors);
+                requireNonBlankText(definition.parameter("currency"), path + ".currency", errors);
+            }
             default -> throw new IllegalStateException("validated assertion was not handled");
         }
     }
@@ -190,6 +217,28 @@ public final class ContractValidator {
     private void requireText(JsonNode value, String path, java.util.List<String> errors) {
         if (value == null || !value.isTextual()) {
             errors.add(path + ": must be a string");
+        }
+    }
+
+    private void requireNonBlankText(JsonNode value, String path, java.util.List<String> errors) {
+        if (value == null || !value.isTextual() || value.asText().isBlank()) {
+            errors.add(path + ": must be a non-empty string");
+        }
+    }
+
+    private void requireNumber(JsonNode value, String path, java.util.List<String> errors) {
+        if (value == null || !value.isNumber() || value.decimalValue().signum() < 0) {
+            errors.add(path + ": must be a non-negative number");
+        }
+    }
+
+    private void requireNames(JsonNode value, String path, java.util.List<String> errors) {
+        if (value == null || !value.isArray()) {
+            errors.add(path + ".names: must be an array");
+            return;
+        }
+        for (var name : value) {
+            requireNonBlankText(name, path + ".names", errors);
         }
     }
 }
