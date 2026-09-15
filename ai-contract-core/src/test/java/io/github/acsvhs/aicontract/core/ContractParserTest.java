@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -77,6 +78,35 @@ class ContractParserTest {
                 assertThrows(ContractConfigurationException.class, () -> new ContractParser().parse(file, Map.of()));
         assertTrue(exception.getMessage().contains("line 3"));
         assertTrue(exception.getMessage().contains("column 1"));
+    }
+
+    @Test
+    void warnsAboutHardcodedSecretsWithoutEchoingTheirValues(@TempDir Path directory) throws Exception {
+        var file = directory.resolve("hardcoded-secret.yaml");
+        Files.writeString(
+                file,
+                "version: '1'\nsuite: {name: demo}\nvariables: {API_KEY: exposed-value}\n"
+                        + "target: {type: http, baseUrl: 'http://localhost', headers: {Authorization: 'Bearer literal-token'}}\n"
+                        + "cases: [{id: one, request: {path: /}, assertions: [{type: httpStatus, equals: 200}]}]\n");
+        var warnings = new ArrayList<String>();
+        new ContractParser(warnings::add).parse(file, Map.of());
+        assertEquals(2, warnings.size());
+        assertTrue(warnings.stream().allMatch(message -> message.contains("probable hardcoded secret")));
+        assertTrue(warnings.stream().noneMatch(message -> message.contains("exposed-value")));
+        assertTrue(warnings.stream().noneMatch(message -> message.contains("literal-token")));
+    }
+
+    @Test
+    void doesNotWarnWhenSensitiveHeadersUseEnvironmentVariables(@TempDir Path directory) throws Exception {
+        var file = directory.resolve("environment-secret.yaml");
+        Files.writeString(
+                file,
+                "version: '1'\nsuite: {name: demo}\n"
+                        + "target: {type: http, baseUrl: 'http://localhost', headers: {Authorization: 'Bearer ${API_TOKEN}'}}\n"
+                        + "cases: [{id: one, request: {path: /}, assertions: [{type: httpStatus, equals: 200}]}]\n");
+        var warnings = new ArrayList<String>();
+        new ContractParser(warnings::add).parse(file, Map.of("API_TOKEN", "safe-value"));
+        assertTrue(warnings.isEmpty());
     }
 
     @Test

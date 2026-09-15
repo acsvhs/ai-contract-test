@@ -14,13 +14,26 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.slf4j.LoggerFactory;
 
 public final class ContractParser {
     private static final Pattern VARIABLE = Pattern.compile("\\$\\{([A-Za-z_][A-Za-z0-9_]*)}");
+    private static final Pattern SECRET_NAME = Pattern.compile(
+            "(?i).*(authorization|proxy[_-]?authorization|api[_-]?key|access[_-]?token|secret|password|cookie).*");
     private final ObjectMapper yamlMapper =
             new ObjectMapper(new YAMLFactory()).enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    private final Consumer<String> warningSink;
+
+    public ContractParser() {
+        this(message -> LoggerFactory.getLogger(ContractParser.class).warn(message));
+    }
+
+    public ContractParser(Consumer<String> warningSink) {
+        this.warningSink = java.util.Objects.requireNonNull(warningSink, "warningSink");
+    }
 
     public ContractSuite parse(Path path, Map<String, String> providedVariables) {
         var absolutePath = path.toAbsolutePath().normalize();
@@ -30,6 +43,8 @@ public final class ContractParser {
             }
             var yaml = Files.readString(absolutePath);
             JsonNode root = yamlMapper.readTree(yaml);
+            new ContractSchemaValidator().validate(yaml, absolutePath);
+            warnAboutHardcodedSecrets(root, absolutePath);
             var variables = new java.util.HashMap<String, String>();
             var declaredVariables = root == null ? null : root.get("variables");
             if (declaredVariables != null && declaredVariables.isObject()) {
@@ -38,7 +53,6 @@ public final class ContractParser {
                         .forEachRemaining(entry ->
                                 variables.put(entry.getKey(), entry.getValue().asText()));
             }
-            new ContractSchemaValidator().validate(yaml, absolutePath);
             variables.putAll(providedVariables);
             interpolate(root, variables, absolutePath.toString());
             var contract = yamlMapper.treeToValue(root, ContractSuite.class);
@@ -66,6 +80,38 @@ public final class ContractParser {
             throw new ContractConfigurationException(
                     absolutePath + ": cannot read contract: " + exception.getMessage(), exception);
         }
+    }
+
+    private void warnAboutHardcodedSecrets(JsonNode root, Path file) {
+        inspectSecretValues(root.path("variables"), "$.variables", file, false);
+        inspectSecretValues(root.path("target").path("headers"), "$.target.headers", file, false);
+        var cases = root.path("cases");
+        for (int index = 0; index < cases.size(); index++) {
+            var request = cases.path(index).path("request");
+            inspectSecretValues(request.path("headers"), "$.cases[" + index + "].request.headers", file, false);
+            inspectSecretValues(request.path("body"), "$.cases[" + index + "].request.body", file, true);
+        }
+    }
+
+    private void inspectSecretValues(JsonNode node, String path, Path file, boolean recursive) {
+        if (!node.isObject()) {
+            return;
+        }
+        node.properties().forEach(entry -> {
+            var childPath = path + "." + entry.getKey();
+            var value = entry.getValue();
+            if (SECRET_NAME.matcher(entry.getKey()).matches()
+                    && value.isTextual()
+                    && !VARIABLE.matcher(value.textValue()).find()) {
+                warningSink.accept(file.toAbsolutePath().normalize()
+                        + ": warning: probable hardcoded secret at "
+                        + childPath
+                        + "; use an environment variable such as ${NAME}");
+            }
+            if (recursive && value.isObject()) {
+                inspectSecretValues(value, childPath, file, true);
+            }
+        });
     }
 
     private void interpolate(JsonNode node, Map<String, String> provided, String file) {
