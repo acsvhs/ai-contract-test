@@ -7,6 +7,7 @@
     <dependency><groupId>io.github.acsvhs</groupId><artifactId>ai-contract-model</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>com.fasterxml.jackson.dataformat</groupId><artifactId>jackson-dataformat-yaml</artifactId></dependency>
     <dependency><groupId>com.networknt</groupId><artifactId>json-schema-validator</artifactId><version>${json-schema-validator.version}</version></dependency>
+    <dependency><groupId>com.jayway.jsonpath</groupId><artifactId>json-path</artifactId><version>${json-path.version}</version></dependency>
     <dependency><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId><version>${slf4j.version}</version></dependency>
     <dependency><groupId>org.slf4j</groupId><artifactId>slf4j-nop</artifactId><version>${slf4j.version}</version><scope>test</scope></dependency>
     <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>

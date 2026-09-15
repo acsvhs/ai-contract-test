@@ -7,6 +7,8 @@ import io.github.acsvhs.aicontract.core.ContractRunner;
 import io.github.acsvhs.aicontract.core.DefaultSecretRedactor;
 import io.github.acsvhs.aicontract.core.assertion.ContainsAssertion;
 import io.github.acsvhs.aicontract.core.assertion.HttpStatusAssertion;
+import io.github.acsvhs.aicontract.core.assertion.JsonPathAssertion;
+import io.github.acsvhs.aicontract.core.assertion.JsonSchemaAssertion;
 import io.github.acsvhs.aicontract.core.assertion.MaxLatencyAssertion;
 import io.github.acsvhs.aicontract.core.assertion.RegexAbsentAssertion;
 import io.github.acsvhs.aicontract.core.report.ConsoleReporter;
@@ -58,9 +60,11 @@ public final class AiContractCli implements Runnable {
                                 new HttpStatusAssertion(),
                                 new ContainsAssertion(),
                                 new RegexAbsentAssertion(),
-                                new MaxLatencyAssertion()),
+                                new MaxLatencyAssertion(),
+                                new JsonSchemaAssertion(),
+                                new JsonPathAssertion()),
                         redactor);
-                var result = runner.run(contract);
+                var result = runner.run(contract, contractFile);
                 for (var report : reports) {
                     switch (report) {
                         case "console" -> new ConsoleReporter(new PrintWriter(System.out, true))

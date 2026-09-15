@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.acsvhs.aicontract.core.assertion.ContainsAssertion;
 import io.github.acsvhs.aicontract.core.assertion.HttpStatusAssertion;
+import io.github.acsvhs.aicontract.core.assertion.JsonPathAssertion;
+import io.github.acsvhs.aicontract.core.assertion.JsonSchemaAssertion;
 import io.github.acsvhs.aicontract.core.assertion.MaxLatencyAssertion;
 import io.github.acsvhs.aicontract.core.assertion.RegexAbsentAssertion;
 import io.github.acsvhs.aicontract.model.AssertionDefinition;
@@ -15,8 +17,12 @@ import io.github.acsvhs.aicontract.model.TargetResponse;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class AssertionsTest {
+    @TempDir
+    private java.nio.file.Path temporaryDirectory;
+
     private final ObjectMapper mapper = new ObjectMapper();
     private final ExecutionContext context = new ExecutionContext(
             new ContractCase("case", null, List.of(), null, List.of()),
@@ -76,11 +82,73 @@ class AssertionsTest {
         assertEquals("[201,204]", result.expected());
     }
 
+    @Test
+    void evaluatesJsonPathPresenceAndEquality() throws Exception {
+        var jsonContext =
+                context(new TargetResponse(200, Map.of(), "{\"answer\":{\"text\":\"safe\"},\"items\":[1,2]}", 12));
+        var assertion = new JsonPathAssertion();
+
+        assertTrue(assertion
+                .evaluate(
+                        definition("{\"type\":\"jsonPath\",\"path\":\"$.answer.text\",\"equals\":\"safe\"}"),
+                        jsonContext)
+                .passed());
+        assertTrue(assertion
+                .evaluate(definition("{\"type\":\"jsonPath\",\"path\":\"$.missing\",\"exists\":false}"), jsonContext)
+                .passed());
+        assertFalse(assertion
+                .evaluate(definition("{\"type\":\"jsonPath\",\"path\":\"$.items[0]\",\"equals\":2}"), jsonContext)
+                .passed());
+        assertFalse(assertion
+                .evaluate(definition("{\"type\":\"jsonPath\",\"path\":\"$.missing\",\"exists\":true}"), jsonContext)
+                .passed());
+    }
+
+    @Test
+    void evaluatesAContractRelativeJsonSchema() throws Exception {
+        java.nio.file.Files.writeString(
+                temporaryDirectory.resolve("response.schema.json"),
+                "{\"type\":\"object\",\"required\":[\"answer\"],\"properties\":{\"answer\":{\"type\":\"string\"}}}");
+        var assertion = new JsonSchemaAssertion();
+        var passingContext =
+                context(new TargetResponse(200, Map.of(), "{\"answer\":\"safe\"}", 12), temporaryDirectory);
+        var failingContext = context(new TargetResponse(200, Map.of(), "{\"answer\":12}", 12), temporaryDirectory);
+        var schema = definition("{\"type\":\"jsonSchema\",\"file\":\"response.schema.json\"}");
+
+        assertTrue(assertion.evaluate(schema, passingContext).passed());
+        assertFalse(assertion.evaluate(schema, failingContext).passed());
+        assertFalse(assertion
+                .evaluate(schema, context(new TargetResponse(200, Map.of(), "not-json", 12), temporaryDirectory))
+                .passed());
+    }
+
+    @Test
+    void rejectsUnsafeJsonSchemaResources() throws Exception {
+        java.nio.file.Files.writeString(
+                temporaryDirectory.resolve("remote.schema.json"), "{\"$ref\":\"https://example.invalid/schema.json\"}");
+        var assertion = new JsonSchemaAssertion();
+        var localContext = context(new TargetResponse(200, Map.of(), "{}", 12), temporaryDirectory);
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                ContractConfigurationException.class,
+                () -> assertion.evaluate(
+                        definition("{\"type\":\"jsonSchema\",\"file\":\"../outside.schema.json\"}"), localContext));
+        org.junit.jupiter.api.Assertions.assertThrows(
+                ContractConfigurationException.class,
+                () -> assertion.evaluate(
+                        definition("{\"type\":\"jsonSchema\",\"file\":\"remote.schema.json\"}"), localContext));
+    }
+
     private ExecutionContext context(TargetResponse response) {
+        return context(response, java.nio.file.Path.of(".").toAbsolutePath().normalize());
+    }
+
+    private ExecutionContext context(TargetResponse response, java.nio.file.Path contractDirectory) {
         return new ExecutionContext(
                 new ContractCase("case", null, List.of(), null, List.of()),
                 response,
-                new DefaultSecretRedactor(List.of()));
+                new DefaultSecretRedactor(List.of()),
+                contractDirectory);
     }
 
     private AssertionDefinition definition(String json) throws Exception {

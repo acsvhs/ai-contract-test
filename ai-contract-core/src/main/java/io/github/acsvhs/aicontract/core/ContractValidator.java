@@ -1,15 +1,26 @@
 package io.github.acsvhs.aicontract.core;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.jayway.jsonpath.InvalidPathException;
+import com.jayway.jsonpath.JsonPath;
 import io.github.acsvhs.aicontract.model.AssertionDefinition;
 import io.github.acsvhs.aicontract.model.ContractSuite;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public final class ContractValidator {
-    private static final Set<String> ASSERTIONS = Set.of("httpStatus", "contains", "regexAbsent", "maxLatency");
+    private static final Set<String> ASSERTIONS =
+            Set.of("httpStatus", "contains", "regexAbsent", "maxLatency", "jsonSchema", "jsonPath");
+    private static final Map<String, Set<String>> ASSERTION_PARAMETERS = Map.of(
+            "httpStatus", Set.of("equals", "oneOf"),
+            "contains", Set.of("value"),
+            "regexAbsent", Set.of("patterns"),
+            "maxLatency", Set.of("milliseconds"),
+            "jsonSchema", Set.of("file"),
+            "jsonPath", Set.of("path", "exists", "equals"));
 
     public void validate(ContractSuite contract, Path file) {
         var errors = new java.util.ArrayList<String>();
@@ -88,6 +99,14 @@ public final class ContractValidator {
             errors.add(path + ".type: unsupported assertion '" + definition.type() + "'");
             return;
         }
+        var unexpected = definition.parameters().keySet().stream()
+                .filter(parameter ->
+                        !ASSERTION_PARAMETERS.get(definition.type()).contains(parameter))
+                .sorted()
+                .toList();
+        if (!unexpected.isEmpty()) {
+            errors.add(path + ": unsupported parameters " + unexpected + " for '" + definition.type() + "'");
+        }
         switch (definition.type()) {
             case "httpStatus" -> validateHttpStatus(definition, path, errors);
             case "contains" -> requireText(definition.parameter("value"), path + ".value", errors);
@@ -106,7 +125,28 @@ public final class ContractValidator {
                 }
             }
             case "maxLatency" -> requireInteger(definition.parameter("milliseconds"), path + ".milliseconds", errors);
+            case "jsonSchema" -> requireText(definition.parameter("file"), path + ".file", errors);
+            case "jsonPath" -> validateJsonPath(definition, path, errors);
             default -> throw new IllegalStateException("validated assertion was not handled");
+        }
+    }
+
+    private void validateJsonPath(AssertionDefinition definition, String path, java.util.List<String> errors) {
+        var expression = definition.parameter("path");
+        requireText(expression, path + ".path", errors);
+        if (expression != null && expression.isTextual()) {
+            try {
+                JsonPath.compile(expression.asText());
+            } catch (InvalidPathException exception) {
+                errors.add(path + ".path: invalid JSONPath '" + expression.asText() + "'");
+            }
+        }
+        var exists = definition.parameter("exists");
+        var equals = definition.parameter("equals");
+        if ((exists == null) == (equals == null)) {
+            errors.add(path + ": requires exactly one of 'exists' or 'equals'");
+        } else if (exists != null && !exists.isBoolean()) {
+            errors.add(path + ".exists: must be a boolean");
         }
     }
 

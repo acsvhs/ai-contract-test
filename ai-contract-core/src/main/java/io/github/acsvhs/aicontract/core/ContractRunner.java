@@ -4,6 +4,7 @@ import io.github.acsvhs.aicontract.model.AssertionResult;
 import io.github.acsvhs.aicontract.model.CaseResult;
 import io.github.acsvhs.aicontract.model.ContractSuite;
 import io.github.acsvhs.aicontract.model.SuiteResult;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,17 +25,26 @@ public final class ContractRunner {
     }
 
     public SuiteResult run(ContractSuite suite) {
+        return run(suite, Path.of(".").toAbsolutePath().normalize().resolve("contract.yaml"));
+    }
+
+    public SuiteResult run(ContractSuite suite, Path contractFile) {
         var adapter = adapters.get(suite.target().type());
         if (adapter == null) {
             throw new ContractConfigurationException(
                     "No adapter registered for target type '" + suite.target().type() + "'");
+        }
+        var absoluteContractFile = contractFile.toAbsolutePath().normalize();
+        var contractDirectory = absoluteContractFile.getParent();
+        if (contractDirectory == null) {
+            contractDirectory = absoluteContractFile;
         }
         var caseResults = new ArrayList<CaseResult>();
         for (var contractCase : suite.cases()) {
             var response = adapter.execute(
                     suite.target(), contractCase.request(), suite.suite().effectiveTimeoutMs());
             var assertionResults = new ArrayList<AssertionResult>();
-            var context = new ExecutionContext(contractCase, response, redactor);
+            var context = new ExecutionContext(contractCase, response, redactor, contractDirectory);
             for (var definition : contractCase.assertions()) {
                 var assertion = assertions.get(definition.type());
                 if (assertion == null) {

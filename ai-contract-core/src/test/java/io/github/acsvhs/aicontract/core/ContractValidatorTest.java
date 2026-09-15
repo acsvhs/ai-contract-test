@@ -68,7 +68,14 @@ class ContractValidatorTest {
                 validCase("contains", definition("{\"type\":\"contains\"}")),
                 validCase("regex-empty", definition("{\"type\":\"regexAbsent\",\"patterns\":[]}")),
                 validCase("regex-invalid", definition("{\"type\":\"regexAbsent\",\"patterns\":[\"[\"]}")),
-                validCase("latency", definition("{\"type\":\"maxLatency\",\"milliseconds\":-1}")));
+                validCase("latency", definition("{\"type\":\"maxLatency\",\"milliseconds\":-1}")),
+                validCase("schema", definition("{\"type\":\"jsonSchema\"}")),
+                validCase(
+                        "path-both",
+                        definition("{\"type\":\"jsonPath\",\"path\":\"$.answer\",\"exists\":true,\"equals\":1}")),
+                validCase("path-type", definition("{\"type\":\"jsonPath\",\"path\":\"$[\",\"exists\":1}")),
+                validCase(
+                        "wrong-parameter", definition("{\"type\":\"contains\",\"value\":\"ok\",\"milliseconds\":1}")));
         var exception =
                 assertThrows(ContractConfigurationException.class, () -> validator.validate(suite(cases), file));
         assertTrue(exception.getMessage().contains("requires exactly one"));
@@ -77,6 +84,9 @@ class ContractValidatorTest {
         assertTrue(exception.getMessage().contains("must be a non-empty array"));
         assertTrue(exception.getMessage().contains("invalid regular expression"));
         assertTrue(exception.getMessage().contains("must be a non-negative integer"));
+        assertTrue(exception.getMessage().contains("invalid JSONPath"));
+        assertTrue(exception.getMessage().contains("must be a boolean"));
+        assertTrue(exception.getMessage().contains("unsupported parameters"));
     }
 
     private ContractSuite suite(List<ContractCase> cases) {
