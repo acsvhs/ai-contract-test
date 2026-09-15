@@ -13,14 +13,15 @@ Use Java 21 records for immutable domain values and a one-way module dependency 
 
 ```text
 model <- core <- adapter-http <- cli
-              ^-----------------|
+                    ^
+                    |
+               maven-plugin
 ```
 
 The versioned YAML contract is strict by default. The core owns parsing, validation, execution interfaces and assertions. Adapters perform I/O. The CLI composes these pieces. HTTP uses the JDK client; Jackson handles YAML/JSON; Picocli is limited to the CLI.
 
-The first slice executes sequentially. Assertion and adapter extension points are small interfaces rather than inheritance hierarchies.
+The first slice executes sequentially. Assertion and adapter extension points are small interfaces rather than inheritance hierarchies. Java entry points such as the Maven plugin compose the same core and adapters without introducing framework dependencies into them.
 
 ## Consequences
 
 Consumers of model and core do not load Spring. Adding a contract field is a public format change and requires updating the schema, parser tests and this decision record or a superseding ADR when compatibility changes.
-

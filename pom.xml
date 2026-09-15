@@ -23,6 +23,7 @@
     <module>ai-contract-model</module>
     <module>ai-contract-core</module>
     <module>ai-contract-adapter-http</module>
+    <module>ai-contract-maven-plugin</module>
     <module>ai-contract-cli</module>
   </modules>
 
@@ -36,6 +37,8 @@
     <jacoco.version>0.8.15</jacoco.version>
     <picocli.version>4.7.7</picocli.version>
     <slf4j.version>2.0.17</slf4j.version>
+    <maven.version>3.9.11</maven.version>
+    <maven-plugin-tools.version>3.15.2</maven-plugin-tools.version>
   </properties>
 
   <dependencyManagement>

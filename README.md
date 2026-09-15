@@ -70,9 +70,28 @@ Unknown structural fields, duplicate case IDs, missing environment variables and
 
 JSON Schema files are resolved relative to the contract file and must remain inside its directory. Remote schema references are rejected. A `jsonPath` assertion accepts exactly one of `exists` (boolean) or `equals` (any JSON value).
 
+## Maven integration
+
+After building this unreleased snapshot locally, bind the plugin to `verify`. It reads `*.yaml` and `*.yml` files directly inside `src/test/ai-contract` by default and fails the build when any contract case fails:
+
+```xml
+<plugin>
+  <groupId>io.github.acsvhs</groupId>
+  <artifactId>ai-contract-maven-plugin</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <executions>
+    <execution>
+      <goals><goal>test</goal></goals>
+    </execution>
+  </executions>
+</plugin>
+```
+
+Override the directory with `<contractsDirectory>...</contractsDirectory>` or `-DaiContract.contractsDirectory=...`; use `-DaiContract.skip=true` to skip execution. These coordinates have not been published to a package repository.
+
 ## Architecture
 
-The Maven modules follow a one-way dependency graph: `model` contains immutable values, `core` owns parsing and execution, `adapter-http` performs HTTP calls, and `cli` wires the application. See [ADR 0001](docs/adr/0001-core-architecture.md).
+The Maven modules follow a one-way dependency graph: `model` contains immutable values, `core` owns parsing and execution, `adapter-http` performs HTTP calls, and the CLI and Maven plugin wire those pieces for their respective entry points. See [ADR 0001](docs/adr/0001-core-architecture.md).
 
 ## Contract schema
 
