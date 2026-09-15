@@ -16,6 +16,7 @@ import io.github.acsvhs.aicontract.core.report.JunitXmlReporter;
 import io.github.acsvhs.aicontract.http.HttpTargetAdapter;
 import io.github.acsvhs.aicontract.model.CaseResult;
 import io.github.acsvhs.aicontract.model.SuiteResult;
+import io.github.acsvhs.aicontract.openai.OpenAiCompatibleTargetAdapter;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -121,7 +122,7 @@ public final class AiContractTestMojo extends AbstractMojo {
 
     private ContractRunner runner(DefaultSecretRedactor redactor) {
         return new ContractRunner(
-                List.of(new HttpTargetAdapter()),
+                List.of(new HttpTargetAdapter(), new OpenAiCompatibleTargetAdapter()),
                 List.of(
                         new HttpStatusAssertion(),
                         new ContainsAssertion(),

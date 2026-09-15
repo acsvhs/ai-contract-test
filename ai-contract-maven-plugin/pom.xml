@@ -8,6 +8,7 @@
   <dependencies>
     <dependency><groupId>io.github.acsvhs</groupId><artifactId>ai-contract-core</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.github.acsvhs</groupId><artifactId>ai-contract-adapter-http</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>io.github.acsvhs</groupId><artifactId>ai-contract-adapter-openai-compatible</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>org.apache.maven</groupId><artifactId>maven-plugin-api</artifactId><version>${maven.version}</version><scope>provided</scope></dependency>
     <dependency><groupId>org.apache.maven.plugin-tools</groupId><artifactId>maven-plugin-annotations</artifactId><version>${maven-plugin-tools.version}</version><scope>provided</scope></dependency>
     <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>

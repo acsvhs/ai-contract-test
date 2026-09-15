@@ -15,6 +15,7 @@ import io.github.acsvhs.aicontract.core.report.ConsoleReporter;
 import io.github.acsvhs.aicontract.core.report.JsonReporter;
 import io.github.acsvhs.aicontract.core.report.JunitXmlReporter;
 import io.github.acsvhs.aicontract.http.HttpTargetAdapter;
+import io.github.acsvhs.aicontract.openai.OpenAiCompatibleTargetAdapter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Path;
@@ -56,7 +57,7 @@ public final class AiContractCli implements Runnable {
                 var contract = new ContractParser().parse(contractFile, Map.of());
                 redactor = new DefaultSecretRedactor(secretVariableValues(contract.variables()));
                 var runner = new ContractRunner(
-                        List.of(new HttpTargetAdapter()),
+                        List.of(new HttpTargetAdapter(), new OpenAiCompatibleTargetAdapter()),
                         List.of(
                                 new HttpStatusAssertion(),
                                 new ContainsAssertion(),

@@ -53,7 +53,7 @@ public final class ContractValidator {
             errors.add("target: is required");
             return;
         }
-        if (!"http".equals(contract.target().type())) {
+        if (!Set.of("http", "openai-compatible").contains(contract.target().type())) {
             errors.add("target.type: unsupported adapter '" + contract.target().type() + "'");
         }
         try {
@@ -83,6 +83,9 @@ public final class ContractValidator {
                 errors.add(prefix + ".request: is required");
             } else if (item.request().path() == null || !item.request().path().startsWith("/")) {
                 errors.add(prefix + ".request.path: must start with '/'");
+            } else if ("openai-compatible".equals(contract.target().type())
+                    && !"/v1/chat/completions".equals(item.request().path())) {
+                errors.add(prefix + ".request.path: openai-compatible targets require '/v1/chat/completions'");
             }
             if (item.assertions().isEmpty()) {
                 errors.add(prefix + ".assertions: at least one assertion is required");

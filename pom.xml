@@ -23,6 +23,7 @@
     <module>ai-contract-model</module>
     <module>ai-contract-core</module>
     <module>ai-contract-adapter-http</module>
+    <module>ai-contract-adapter-openai-compatible</module>
     <module>ai-contract-maven-plugin</module>
     <module>ai-contract-junit5</module>
     <module>ai-contract-cli</module>

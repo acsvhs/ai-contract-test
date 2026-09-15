@@ -11,6 +11,7 @@ import io.github.acsvhs.aicontract.core.assertion.MaxLatencyAssertion;
 import io.github.acsvhs.aicontract.core.assertion.RegexAbsentAssertion;
 import io.github.acsvhs.aicontract.http.HttpTargetAdapter;
 import io.github.acsvhs.aicontract.model.ContractSuite;
+import io.github.acsvhs.aicontract.openai.OpenAiCompatibleTargetAdapter;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +58,7 @@ public final class AiContractTests {
 
     private static ContractRunner runner(DefaultSecretRedactor redactor) {
         return new ContractRunner(
-                List.of(new HttpTargetAdapter()),
+                List.of(new HttpTargetAdapter(), new OpenAiCompatibleTargetAdapter()),
                 List.of(
                         new HttpStatusAssertion(),
                         new ContainsAssertion(),
