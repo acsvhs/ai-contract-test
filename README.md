@@ -6,7 +6,7 @@ AI Contract Test is an experimental, local-first contract runner for determinist
 
 ## Scope
 
-The current slice targets generic REST endpoints and the deterministic assertions `httpStatus`, `contains`, `regexAbsent`, `maxLatency`, `jsonSchema`, and `jsonPath`. Requests run sequentially with mandatory timeouts and a configurable response limit that defaults to 1 MiB. Maven and JUnit 5 integrations are included; provider-specific adapters, record/replay and a frontend are deliberately deferred.
+The current slice targets generic REST endpoints and OpenAI-compatible chat completions. Deterministic assertions cover HTTP, JSON, latency, tool calls, tokens and user-configured cost limits. Requests run sequentially with mandatory timeouts and a configurable response limit that defaults to 1 MiB. Maven, JUnit 5 and sanitized record/replay integrations are included; a frontend is deliberately deferred.
 
 ## Build
 
@@ -111,6 +111,25 @@ Use the overload that accepts a `Map<String, String>` to provide variables progr
 ```
 
 The example uses no AI provider, private data or API key.
+
+## Record and replay
+
+Use `record` only when response persistence is intentional. Cassettes contain a sanitized response,
+normalized tool calls and token usage, plus a fingerprint of the sanitized request:
+
+```bash
+java -jar ai-contract-cli/target/ai-contract-cli-0.1.0-SNAPSHOT.jar run contract.yaml --mode record
+java -jar ai-contract-cli/target/ai-contract-cli-0.1.0-SNAPSHOT.jar run contract.yaml --mode replay
+```
+
+The default directory is `target/ai-contract/cassettes`. Maven accepts
+`-DaiContract.mode=replay` and `-DaiContract.cassettesDirectory=...`. Replay fails when the cassette
+is absent or the sanitized request fingerprint changed, and it never invokes the network adapter.
+Recorded latency is informational and `maxLatency` is not evaluated during replay.
+
+Files ending in `.ai-contract-cassette.json` are ignored by Git. A reviewed, sanitized cassette can
+be committed deliberately with `git add -f`; inspect it before doing so because pattern-based
+redaction reduces risk but cannot guarantee that all sensitive data was detected.
 
 ## Architecture
 

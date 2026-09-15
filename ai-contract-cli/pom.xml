@@ -7,6 +7,7 @@
     <dependency><groupId>io.github.acsvhs</groupId><artifactId>ai-contract-core</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.github.acsvhs</groupId><artifactId>ai-contract-adapter-http</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.github.acsvhs</groupId><artifactId>ai-contract-adapter-openai-compatible</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>io.github.acsvhs</groupId><artifactId>ai-contract-recorder</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>info.picocli</groupId><artifactId>picocli</artifactId><version>${picocli.version}</version></dependency>
     <dependency><groupId>org.slf4j</groupId><artifactId>slf4j-simple</artifactId><version>${slf4j.version}</version><scope>runtime</scope></dependency>
     <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>

@@ -8,4 +8,8 @@ public interface TargetAdapter {
     String type();
 
     TargetResponse execute(TargetDefinition target, ContractRequest request, int timeoutMs);
+
+    default TargetResponse execute(TargetDefinition target, ContractRequest request, int timeoutMs, String caseId) {
+        return execute(target, request, timeoutMs);
+    }
 }

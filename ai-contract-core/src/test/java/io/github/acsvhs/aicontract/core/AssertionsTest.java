@@ -82,6 +82,15 @@ class AssertionsTest {
     }
 
     @Test
+    void ignoresRecordedLatencyDuringReplay() throws Exception {
+        var replayContext = context(new TargetResponse(
+                200, Map.of(), "safe", 9999, new AiResponseMetadata(List.of(), TokenUsage.unknown(), true)));
+        assertTrue(new MaxLatencyAssertion()
+                .evaluate(definition("{\"type\":\"maxLatency\",\"milliseconds\":1}"), replayContext)
+                .passed());
+    }
+
+    @Test
     void rejectsAStatusOutsideTheAllowedSet() throws Exception {
         var result = new HttpStatusAssertion()
                 .evaluate(definition("{\"type\":\"httpStatus\",\"oneOf\":[201,204]}"), context);

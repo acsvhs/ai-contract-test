@@ -32,7 +32,9 @@ class AiContractCliTest {
 
     @AfterEach
     void stopServer() {
-        server.stop(0);
+        if (server != null) {
+            server.stop(0);
+        }
     }
 
     @Test
@@ -54,6 +56,39 @@ class AiContractCliTest {
                 new CommandLine(new AiContractCli())
                         .execute("run", contract.toString(), "--report", "junit", "--report-dir", reports.toString()));
         org.junit.jupiter.api.Assertions.assertTrue(Files.isRegularFile(reports.resolve("TEST-ai-contract.xml")));
+    }
+
+    @Test
+    void recordsAndReplaysWithoutNetwork(@TempDir Path directory) throws Exception {
+        var contract = writeContract(directory, baseUrl, 200);
+        var cassettes = directory.resolve("cassettes");
+        assertEquals(
+                0,
+                new CommandLine(new AiContractCli())
+                        .execute(
+                                "run",
+                                contract.toString(),
+                                "--report",
+                                "console",
+                                "--mode",
+                                "record",
+                                "--cassette-dir",
+                                cassettes.toString()));
+        server.stop(0);
+        server = null;
+
+        assertEquals(
+                0,
+                new CommandLine(new AiContractCli())
+                        .execute(
+                                "run",
+                                contract.toString(),
+                                "--report",
+                                "console",
+                                "--mode",
+                                "replay",
+                                "--cassette-dir",
+                                cassettes.toString()));
     }
 
     @Test

@@ -20,6 +20,8 @@ import io.github.acsvhs.aicontract.core.report.JsonReporter;
 import io.github.acsvhs.aicontract.core.report.JunitXmlReporter;
 import io.github.acsvhs.aicontract.http.HttpTargetAdapter;
 import io.github.acsvhs.aicontract.openai.OpenAiCompatibleTargetAdapter;
+import io.github.acsvhs.aicontract.recorder.ExecutionMode;
+import io.github.acsvhs.aicontract.recorder.RecordingTargetAdapter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Path;
@@ -54,14 +56,31 @@ public final class AiContractCli implements Runnable {
         @Option(names = "--report-dir", defaultValue = "target/ai-contract", description = "Report output directory")
         private Path reportDirectory;
 
+        @Option(names = "--mode", defaultValue = "live", description = "Execution mode: live, record, replay")
+        private String mode;
+
+        @Option(
+                names = "--cassette-dir",
+                defaultValue = "target/ai-contract/cassettes",
+                description = "Cassette directory for record/replay")
+        private Path cassetteDirectory;
+
         @Override
         public Integer call() {
             var redactor = new DefaultSecretRedactor(List.of());
             try {
                 var contract = new ContractParser().parse(contractFile, Map.of());
                 redactor = new DefaultSecretRedactor(secretVariableValues(contract.variables()));
+                var executionMode = ExecutionMode.parse(mode);
                 var runner = new ContractRunner(
-                        List.of(new HttpTargetAdapter(), new OpenAiCompatibleTargetAdapter()),
+                        List.of(
+                                new RecordingTargetAdapter(
+                                        new HttpTargetAdapter(), executionMode, cassetteDirectory, redactor),
+                                new RecordingTargetAdapter(
+                                        new OpenAiCompatibleTargetAdapter(),
+                                        executionMode,
+                                        cassetteDirectory,
+                                        redactor)),
                         List.of(
                                 new HttpStatusAssertion(),
                                 new ContainsAssertion(),

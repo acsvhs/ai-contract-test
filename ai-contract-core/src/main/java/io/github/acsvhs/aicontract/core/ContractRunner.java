@@ -42,7 +42,7 @@ public final class ContractRunner {
         var caseResults = new ArrayList<CaseResult>();
         for (var contractCase : suite.cases()) {
             var response = adapter.execute(
-                    suite.target(), contractCase.request(), suite.suite().effectiveTimeoutMs());
+                    suite.target(), contractCase.request(), suite.suite().effectiveTimeoutMs(), contractCase.id());
             var assertionResults = new ArrayList<AssertionResult>();
             var context = new ExecutionContext(contractCase, response, redactor, contractDirectory);
             for (var definition : contractCase.assertions()) {

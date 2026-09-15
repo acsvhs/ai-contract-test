@@ -6,3 +6,4 @@ target/
 .classpath
 .project
 .settings/
+*.ai-contract-cassette.json

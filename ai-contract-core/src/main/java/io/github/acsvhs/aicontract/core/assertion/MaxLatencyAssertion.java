@@ -13,6 +13,9 @@ public final class MaxLatencyAssertion implements ContractAssertion {
 
     @Override
     public AssertionResult evaluate(AssertionDefinition definition, ExecutionContext context) {
+        if (context.response().metadata().replayed()) {
+            return AssertionResult.passed(type());
+        }
         long expected = definition.parameter("milliseconds").asLong();
         long actual = context.response().durationMs();
         return actual <= expected

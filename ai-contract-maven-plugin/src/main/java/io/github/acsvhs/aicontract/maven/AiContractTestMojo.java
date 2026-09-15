@@ -21,6 +21,8 @@ import io.github.acsvhs.aicontract.http.HttpTargetAdapter;
 import io.github.acsvhs.aicontract.model.CaseResult;
 import io.github.acsvhs.aicontract.model.SuiteResult;
 import io.github.acsvhs.aicontract.openai.OpenAiCompatibleTargetAdapter;
+import io.github.acsvhs.aicontract.recorder.ExecutionMode;
+import io.github.acsvhs.aicontract.recorder.RecordingTargetAdapter;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -52,12 +54,21 @@ public final class AiContractTestMojo extends AbstractMojo {
     @Parameter(property = "aiContract.skip", defaultValue = "false")
     private boolean skip;
 
+    @Parameter(property = "aiContract.mode", defaultValue = "live")
+    private String mode = "live";
+
+    @Parameter(
+            property = "aiContract.cassettesDirectory",
+            defaultValue = "${project.build.directory}/ai-contract/cassettes")
+    private File cassettesDirectory;
+
     public AiContractTestMojo() {}
 
     AiContractTestMojo(File contractsDirectory, File reportsDirectory, boolean skip) {
         this.contractsDirectory = contractsDirectory;
         this.reportsDirectory = reportsDirectory;
         this.skip = skip;
+        this.cassettesDirectory = reportsDirectory == null ? null : new File(reportsDirectory, "cassettes");
     }
 
     @Override
@@ -78,7 +89,7 @@ public final class AiContractTestMojo extends AbstractMojo {
             try {
                 var contract = new ContractParser(getLog()::warn).parse(contractFile, Map.of());
                 var redactor = new DefaultSecretRedactor(secretVariableValues(contract.variables()));
-                var result = runner(redactor).run(contract, contractFile);
+                var result = runner(redactor, contractFile).run(contract, contractFile);
                 new ConsoleReporter(new PrintWriter(System.out, true)).report(result, reportsDirectory.toPath());
                 result.cases().stream()
                         .map(caseResult -> new CaseResult(
@@ -124,9 +135,17 @@ public final class AiContractTestMojo extends AbstractMojo {
         }
     }
 
-    private ContractRunner runner(DefaultSecretRedactor redactor) {
+    private ContractRunner runner(DefaultSecretRedactor redactor, Path contractFile) {
+        var executionMode = ExecutionMode.parse(mode);
+        var cassetteRoot = cassettesDirectory == null
+                ? reportsDirectory.toPath().resolve("cassettes")
+                : cassettesDirectory.toPath();
+        var cassetteNamespace = cassetteRoot.resolve(contractFile.getFileName().toString());
         return new ContractRunner(
-                List.of(new HttpTargetAdapter(), new OpenAiCompatibleTargetAdapter()),
+                List.of(
+                        new RecordingTargetAdapter(new HttpTargetAdapter(), executionMode, cassetteNamespace, redactor),
+                        new RecordingTargetAdapter(
+                                new OpenAiCompatibleTargetAdapter(), executionMode, cassetteNamespace, redactor)),
                 List.of(
                         new HttpStatusAssertion(),
                         new ContainsAssertion(),
