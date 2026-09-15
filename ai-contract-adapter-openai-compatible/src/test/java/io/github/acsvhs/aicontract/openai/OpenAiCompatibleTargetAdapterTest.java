@@ -25,7 +25,11 @@ class OpenAiCompatibleTargetAdapterTest {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext(OpenAiCompatibleTargetAdapter.CHAT_COMPLETIONS_PATH, exchange -> {
             var requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-            var response = (exchange.getRequestMethod() + " " + requestBody).getBytes(StandardCharsets.UTF_8);
+            var response =
+                    """
+                    {"choices":[{"message":{"content":"ok","tool_calls":[{"type":"function","function":{"name":"lookupOrder","arguments":"{\\\"id\\\":42}"}}]}}],"usage":{"prompt_tokens":7,"completion_tokens":3,"total_tokens":10}}
+                    """
+                            .getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(200, response.length);
             exchange.getResponseBody().write(response);
             exchange.close();
@@ -52,8 +56,11 @@ class OpenAiCompatibleTargetAdapterTest {
                 .execute(new TargetDefinition("openai-compatible", baseUrl, Map.of()), request, 1000);
 
         assertEquals(200, response.status());
-        assertTrue(response.body().contains("local-model"));
-        assertTrue(response.body().startsWith("POST "));
+        assertEquals("lookupOrder", response.metadata().toolCalls().getFirst().name());
+        assertTrue(response.metadata().toolCalls().getFirst().arguments().contains("42"));
+        assertEquals(7, response.metadata().tokenUsage().inputTokens());
+        assertEquals(3, response.metadata().tokenUsage().outputTokens());
+        assertEquals(10, response.metadata().tokenUsage().totalTokens());
     }
 
     @Test
