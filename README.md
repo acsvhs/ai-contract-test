@@ -2,11 +2,11 @@
 
 AI Contract Test is an experimental, local-first contract runner for deterministic checks against AI-facing HTTP endpoints. It aims to give Java teams a small Pact/JUnit-like safety net without sending contracts or responses to a service operated by this project.
 
-> Status: experimental `0.x`. The deterministic core is implemented and the Phase 2 Java integrations are in progress; APIs and the contract format may still change.
+> Status: experimental `0.x`. The deterministic core and Phase 2 Java integrations are implemented; APIs and the contract format may still change.
 
 ## Scope
 
-The current slice targets generic REST endpoints and the deterministic assertions `httpStatus`, `contains`, `regexAbsent`, `maxLatency`, `jsonSchema`, and `jsonPath`. Requests run sequentially with mandatory timeouts and a configurable response limit that defaults to 1 MiB. Provider adapters, Maven/JUnit integrations, record/replay and a frontend are deliberately deferred.
+The current slice targets generic REST endpoints and the deterministic assertions `httpStatus`, `contains`, `regexAbsent`, `maxLatency`, `jsonSchema`, and `jsonPath`. Requests run sequentially with mandatory timeouts and a configurable response limit that defaults to 1 MiB. Maven and JUnit 5 integrations are included; provider-specific adapters, record/replay and a frontend are deliberately deferred.
 
 ## Build
 
