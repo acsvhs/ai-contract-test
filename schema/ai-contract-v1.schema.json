@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/acsvhs/ai-contract-test/schema/ai-contract-v1.schema.json",
+  "title": "AI Contract Test contract v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "suite", "target", "cases"],
+  "properties": {
+    "version": { "const": "1" },
+    "suite": {
+      "type": "object", "additionalProperties": false, "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "defaultTimeoutMs": { "type": "integer", "minimum": 1 },
+        "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      }
+    },
+    "variables": { "type": "object", "additionalProperties": { "type": "string" } },
+    "target": {
+      "type": "object", "additionalProperties": false, "required": ["type", "baseUrl"],
+      "properties": {
+        "type": { "const": "http" }, "baseUrl": { "type": "string", "minLength": 1 },
+        "headers": { "$ref": "#/$defs/stringMap" }
+      }
+    },
+    "cases": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "request", "assertions"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 }, "description": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+          "request": {
+            "type": "object", "additionalProperties": false, "required": ["path"],
+            "properties": {
+              "method": { "type": "string" }, "path": { "type": "string" },
+              "headers": { "$ref": "#/$defs/stringMap" }, "query": { "$ref": "#/$defs/stringMap" }, "body": {}
+            }
+          },
+          "assertions": {
+            "type": "array", "minItems": 1,
+            "items": {
+              "type": "object", "required": ["type"],
+              "properties": {
+                "type": { "enum": ["httpStatus", "contains", "regexAbsent", "maxLatency"] },
+                "equals": { "type": "integer", "minimum": 100, "maximum": 599 },
+                "oneOf": { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 100, "maximum": 599 }, "uniqueItems": true },
+                "value": { "type": "string" },
+                "patterns": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+                "milliseconds": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": { "stringMap": { "type": "object", "additionalProperties": { "type": "string" } } }
+}
