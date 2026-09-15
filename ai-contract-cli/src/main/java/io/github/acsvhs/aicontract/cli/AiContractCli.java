@@ -14,7 +14,9 @@ import io.github.acsvhs.aicontract.core.assertion.JsonSchemaAssertion;
 import io.github.acsvhs.aicontract.core.assertion.MaxEstimatedCostAssertion;
 import io.github.acsvhs.aicontract.core.assertion.MaxLatencyAssertion;
 import io.github.acsvhs.aicontract.core.assertion.MaxTokensAssertion;
+import io.github.acsvhs.aicontract.core.assertion.PiiLeakAssertion;
 import io.github.acsvhs.aicontract.core.assertion.RegexAbsentAssertion;
+import io.github.acsvhs.aicontract.core.assertion.SecretLeakAssertion;
 import io.github.acsvhs.aicontract.core.report.ConsoleReporter;
 import io.github.acsvhs.aicontract.core.report.JsonReporter;
 import io.github.acsvhs.aicontract.core.report.JunitXmlReporter;
@@ -91,7 +93,9 @@ public final class AiContractCli implements Runnable {
                                 new AllowedToolCallsAssertion(),
                                 new ForbiddenToolCallsAssertion(),
                                 new MaxTokensAssertion(),
-                                new MaxEstimatedCostAssertion()),
+                                new MaxEstimatedCostAssertion(),
+                                new SecretLeakAssertion(),
+                                new PiiLeakAssertion()),
                         redactor);
                 var result = runner.run(contract, contractFile);
                 for (var report : reports) {

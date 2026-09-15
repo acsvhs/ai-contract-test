@@ -14,7 +14,9 @@ import io.github.acsvhs.aicontract.core.assertion.JsonSchemaAssertion;
 import io.github.acsvhs.aicontract.core.assertion.MaxEstimatedCostAssertion;
 import io.github.acsvhs.aicontract.core.assertion.MaxLatencyAssertion;
 import io.github.acsvhs.aicontract.core.assertion.MaxTokensAssertion;
+import io.github.acsvhs.aicontract.core.assertion.PiiLeakAssertion;
 import io.github.acsvhs.aicontract.core.assertion.RegexAbsentAssertion;
+import io.github.acsvhs.aicontract.core.assertion.SecretLeakAssertion;
 import io.github.acsvhs.aicontract.model.AiResponseMetadata;
 import io.github.acsvhs.aicontract.model.AssertionDefinition;
 import io.github.acsvhs.aicontract.model.ContractCase;
@@ -210,6 +212,23 @@ class AssertionsTest {
         assertEquals("unavailable", tokens.actual());
         assertFalse(cost.passed());
         assertEquals("unavailable", cost.actual());
+    }
+
+    @Test
+    void detectsConfiguredSecretAndPiiPatternsWithoutEchoingMatches() throws Exception {
+        var unsafe =
+                context(new TargetResponse(200, Map.of(), "contact user@example.test with credential key_live_123", 1));
+        var secret = new SecretLeakAssertion()
+                .evaluate(definition("{\"type\":\"secretLeak\",\"patterns\":[\"key_[a-z]+_[0-9]+\"]}"), unsafe);
+        var pii = new PiiLeakAssertion()
+                .evaluate(definition("{\"type\":\"piiLeak\",\"patterns\":[\"[A-Za-z]+@[A-Za-z.]+\"]}"), unsafe);
+
+        assertFalse(secret.passed());
+        assertFalse(pii.passed());
+        assertEquals("[REDACTED MATCH]", secret.actual());
+        assertEquals("[REDACTED MATCH]", pii.actual());
+        assertFalse(secret.toString().contains("key_live_123"));
+        assertFalse(pii.toString().contains("user@example.test"));
     }
 
     private ExecutionContext context(TargetResponse response) {

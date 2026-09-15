@@ -22,7 +22,9 @@ public final class ContractValidator {
             "allowedToolCalls",
             "forbiddenToolCalls",
             "maxTokens",
-            "maxEstimatedCost");
+            "maxEstimatedCost",
+            "secretLeak",
+            "piiLeak");
     private static final Map<String, Set<String>> ASSERTION_PARAMETERS = Map.ofEntries(
             Map.entry("httpStatus", Set.of("equals", "oneOf")),
             Map.entry("contains", Set.of("value")),
@@ -33,6 +35,8 @@ public final class ContractValidator {
             Map.entry("allowedToolCalls", Set.of("names")),
             Map.entry("forbiddenToolCalls", Set.of("names")),
             Map.entry("maxTokens", Set.of("maximum")),
+            Map.entry("secretLeak", Set.of("patterns")),
+            Map.entry("piiLeak", Set.of("patterns")),
             Map.entry(
                     "maxEstimatedCost",
                     Set.of("maximum", "inputCostPerMillionTokens", "outputCostPerMillionTokens", "currency")));
@@ -146,6 +150,7 @@ public final class ContractValidator {
             case "jsonSchema" -> requireText(definition.parameter("file"), path + ".file", errors);
             case "jsonPath" -> validateJsonPath(definition, path, errors);
             case "allowedToolCalls", "forbiddenToolCalls" -> requireNames(definition.parameter("names"), path, errors);
+            case "secretLeak", "piiLeak" -> requirePatterns(definition.parameter("patterns"), path, errors);
             case "maxTokens" -> requireInteger(definition.parameter("maximum"), path + ".maximum", errors);
             case "maxEstimatedCost" -> {
                 requireNumber(definition.parameter("maximum"), path + ".maximum", errors);
@@ -239,6 +244,23 @@ public final class ContractValidator {
         }
         for (var name : value) {
             requireNonBlankText(name, path + ".names", errors);
+        }
+    }
+
+    private void requirePatterns(JsonNode value, String path, java.util.List<String> errors) {
+        if (value == null || !value.isArray() || value.isEmpty()) {
+            errors.add(path + ".patterns: must be a non-empty array");
+            return;
+        }
+        for (var pattern : value) {
+            requireNonBlankText(pattern, path + ".patterns", errors);
+            if (pattern.isTextual()) {
+                try {
+                    java.util.regex.Pattern.compile(pattern.asText());
+                } catch (java.util.regex.PatternSyntaxException exception) {
+                    errors.add(path + ".patterns: invalid regular expression '" + pattern.asText() + "'");
+                }
+            }
         }
     }
 }

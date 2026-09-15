@@ -12,7 +12,9 @@ import io.github.acsvhs.aicontract.core.assertion.JsonSchemaAssertion;
 import io.github.acsvhs.aicontract.core.assertion.MaxEstimatedCostAssertion;
 import io.github.acsvhs.aicontract.core.assertion.MaxLatencyAssertion;
 import io.github.acsvhs.aicontract.core.assertion.MaxTokensAssertion;
+import io.github.acsvhs.aicontract.core.assertion.PiiLeakAssertion;
 import io.github.acsvhs.aicontract.core.assertion.RegexAbsentAssertion;
+import io.github.acsvhs.aicontract.core.assertion.SecretLeakAssertion;
 import io.github.acsvhs.aicontract.http.HttpTargetAdapter;
 import io.github.acsvhs.aicontract.model.ContractSuite;
 import io.github.acsvhs.aicontract.openai.OpenAiCompatibleTargetAdapter;
@@ -73,7 +75,9 @@ public final class AiContractTests {
                         new AllowedToolCallsAssertion(),
                         new ForbiddenToolCallsAssertion(),
                         new MaxTokensAssertion(),
-                        new MaxEstimatedCostAssertion()),
+                        new MaxEstimatedCostAssertion(),
+                        new SecretLeakAssertion(),
+                        new PiiLeakAssertion()),
                 redactor);
     }
 

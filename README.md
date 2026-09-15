@@ -2,7 +2,7 @@
 
 AI Contract Test is an experimental, local-first contract runner for deterministic checks against AI-facing HTTP endpoints. It aims to give Java teams a small Pact/JUnit-like safety net without sending contracts or responses to a service operated by this project.
 
-> Status: experimental `0.x`. The deterministic core and Phase 2 Java integrations are implemented; APIs and the contract format may still change.
+> Status: experimental `0.x`. The deterministic core, Java integrations and Phase 3 offline execution are implemented; APIs and the contract format may still change.
 
 ## Scope
 
@@ -138,6 +138,10 @@ The Maven modules follow a one-way dependency graph: `model` contains immutable 
 ## Contract schema
 
 The strict editor schema is [schema/ai-contract-v1.schema.json](schema/ai-contract-v1.schema.json). Contract format version `1` rejects unknown structural fields.
+
+Security boundaries, redaction behavior and local leak-detection limitations are documented in
+[docs/security.md](docs/security.md). Vulnerabilities should be reported according to
+[SECURITY.md](SECURITY.md), without placing sensitive details in a public issue.
 
 ## Contributing and license
 

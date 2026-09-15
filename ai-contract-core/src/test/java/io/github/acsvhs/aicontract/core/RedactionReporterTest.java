@@ -31,6 +31,20 @@ class RedactionReporterTest {
     }
 
     @Test
+    void redactsBearerTokensJwtsAndPrivateKeysFromExceptionText() {
+        var redactor = new DefaultSecretRedactor(List.of());
+        var unsafe = "request failed: Bearer standalone-token eyJheader.payload.signature "
+                + "-----BEGIN PRIVATE KEY-----\\nprivate-material\\n-----END PRIVATE KEY-----";
+
+        var redacted = redactor.redact(unsafe);
+
+        assertFalse(redacted.contains("standalone-token"));
+        assertFalse(redacted.contains("eyJheader.payload.signature"));
+        assertFalse(redacted.contains("private-material"));
+        assertTrue(redacted.contains("[REDACTED]"));
+    }
+
+    @Test
     void reportersOnlyWriteAlreadySanitizedResults(@TempDir Path directory) throws Exception {
         var result = new SuiteResult(
                 "safe-suite",
