@@ -102,6 +102,16 @@ Stream<DynamicTest> assistantContracts() {
 
 Use the overload that accepts a `Map<String, String>` to provide variables programmatically. Failed contract assertions become ordinary JUnit assertion failures; invalid contracts and transport errors remain test errors.
 
+## Spring Boot example
+
+[`examples/spring-assistant`](examples/spring-assistant) is a deterministic local service and a complete Maven-plugin consumer. Its build starts the application, runs HTTP status, JSONPath, JSON Schema, leakage and latency checks, then stops the application:
+
+```bash
+./mvnw -pl examples/spring-assistant -am verify
+```
+
+The example uses no AI provider, private data or API key.
+
 ## Architecture
 
 The Maven modules follow a one-way dependency graph: `model` contains immutable values, `core` owns parsing and execution, `adapter-http` performs HTTP calls, and the CLI and Maven plugin wire those pieces for their respective entry points. See [ADR 0001](docs/adr/0001-core-architecture.md).

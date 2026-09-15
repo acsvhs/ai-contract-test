@@ -1,0 +1,31 @@
+version: "1"
+suite:
+  name: spring-assistant-example
+  defaultTimeoutMs: 3000
+target:
+  type: http
+  baseUrl: http://127.0.0.1:18081
+cases:
+  - id: deterministic-answer
+    request:
+      method: POST
+      path: /api/assistant
+      headers:
+        Content-Type: application/json
+      body:
+        prompt: Are you ready?
+    assertions:
+      - type: httpStatus
+        equals: 200
+      - type: jsonPath
+        path: $.status
+        equals: ok
+      - type: jsonPath
+        path: $.model
+        equals: deterministic-stub
+      - type: jsonSchema
+        file: assistant-response.schema.json
+      - type: regexAbsent
+        patterns: ["(?i)api[_-]?key", "(?i)password"]
+      - type: maxLatency
+        milliseconds: 3000
