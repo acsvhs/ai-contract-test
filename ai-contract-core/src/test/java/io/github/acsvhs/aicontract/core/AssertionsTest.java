@@ -1,5 +1,6 @@
 package io.github.acsvhs.aicontract.core;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -42,6 +43,44 @@ class AssertionsTest {
         assertTrue(new HttpStatusAssertion()
                 .evaluate(definition("{\"type\":\"httpStatus\",\"oneOf\":[200,204]}"), context)
                 .passed());
+    }
+
+    @Test
+    void reportsSanitizedAndTruncatedContainsFailures() throws Exception {
+        var body = "api_key=secret-value " + "x".repeat(600);
+        var unsafeContext = context(new TargetResponse(200, Map.of(), body, 12));
+        var result = new ContainsAssertion()
+                .evaluate(definition("{\"type\":\"contains\",\"value\":\"missing\"}"), unsafeContext);
+        assertFalse(result.passed());
+        assertFalse(result.actual().contains("secret-value"));
+        assertTrue(result.actual().length() <= 500);
+    }
+
+    @Test
+    void reportsRegexAndLatencyFailures() throws Exception {
+        var regex = new RegexAbsentAssertion()
+                .evaluate(definition("{\"type\":\"regexAbsent\",\"patterns\":[\"safe\"]}"), context);
+        var latency = new MaxLatencyAssertion()
+                .evaluate(definition("{\"type\":\"maxLatency\",\"milliseconds\":11}"), context);
+        assertFalse(regex.passed());
+        assertEquals("matched: [REDACTED]", regex.actual());
+        assertFalse(latency.passed());
+        assertEquals("12 ms", latency.actual());
+    }
+
+    @Test
+    void rejectsAStatusOutsideTheAllowedSet() throws Exception {
+        var result = new HttpStatusAssertion()
+                .evaluate(definition("{\"type\":\"httpStatus\",\"oneOf\":[201,204]}"), context);
+        assertFalse(result.passed());
+        assertEquals("[201,204]", result.expected());
+    }
+
+    private ExecutionContext context(TargetResponse response) {
+        return new ExecutionContext(
+                new ContractCase("case", null, List.of(), null, List.of()),
+                response,
+                new DefaultSecretRedactor(List.of()));
     }
 
     private AssertionDefinition definition(String json) throws Exception {

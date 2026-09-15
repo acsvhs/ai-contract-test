@@ -133,4 +133,24 @@ class ContractParserTest {
                 assertThrows(ContractConfigurationException.class, () -> new ContractParser().parse(file, Map.of()));
         assertTrue(exception.getMessage().contains("invalid regular expression"));
     }
+
+    @Test
+    void rejectsMissingVariablesWithoutDisclosingValues(@TempDir Path directory) throws Exception {
+        var file = directory.resolve("missing-variable.yaml");
+        Files.writeString(
+                file,
+                "version: '1'\nsuite: {name: demo}\ntarget: {type: http, baseUrl: 'http://${MISSING_HOST}'}\n"
+                        + "cases: [{id: one, request: {path: /}, assertions: [{type: httpStatus, equals: 200}]}]\n");
+        var exception =
+                assertThrows(ContractConfigurationException.class, () -> new ContractParser().parse(file, Map.of()));
+        assertTrue(exception.getMessage().contains("unresolved variable ${MISSING_HOST}"));
+    }
+
+    @Test
+    void rejectsMissingFiles(@TempDir Path directory) {
+        var file = directory.resolve("does-not-exist.yaml");
+        var exception =
+                assertThrows(ContractConfigurationException.class, () -> new ContractParser().parse(file, Map.of()));
+        assertTrue(exception.getMessage().contains("contract file does not exist"));
+    }
 }

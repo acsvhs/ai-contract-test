@@ -2,6 +2,7 @@ package io.github.acsvhs.aicontract.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.acsvhs.aicontract.core.assertion.HttpStatusAssertion;
@@ -88,6 +89,33 @@ class ContractRunnerTest {
         assertFalse(serialized.contains("super-secret-value"));
         assertFalse(serialized.contains("expected-secret"));
         assertFalse(serialized.contains("actual-secret"));
+    }
+
+    @Test
+    void rejectsMissingRuntimeExtensions() throws Exception {
+        var definition = new ObjectMapper().readValue("{\"type\":\"missing\"}", AssertionDefinition.class);
+        var suite = new ContractSuite(
+                "1",
+                new SuiteDefinition("demo", null, 100, List.of()),
+                Map.of(),
+                new TargetDefinition("http", "http://localhost", Map.of()),
+                List.of(contractCase("one", definition)));
+        var missingAdapter = new ContractRunner(List.of(), List.of(), value -> value);
+        assertThrows(ContractConfigurationException.class, () -> missingAdapter.run(suite));
+
+        TargetAdapter adapter = new TargetAdapter() {
+            @Override
+            public String type() {
+                return "http";
+            }
+
+            @Override
+            public TargetResponse execute(TargetDefinition target, ContractRequest request, int timeoutMs) {
+                return new TargetResponse(200, Map.of(), "", 1);
+            }
+        };
+        var missingAssertion = new ContractRunner(List.of(adapter), List.of(), value -> value);
+        assertThrows(ContractConfigurationException.class, () -> missingAssertion.run(suite));
     }
 
     private ContractCase contractCase(String id, AssertionDefinition assertion) {
