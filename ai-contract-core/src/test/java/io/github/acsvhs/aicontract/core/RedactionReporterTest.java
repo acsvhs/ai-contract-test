@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.acsvhs.aicontract.core.report.ConsoleReporter;
 import io.github.acsvhs.aicontract.core.report.JsonReporter;
+import io.github.acsvhs.aicontract.core.report.JunitXmlReporter;
 import io.github.acsvhs.aicontract.model.AssertionResult;
 import io.github.acsvhs.aicontract.model.CaseResult;
 import io.github.acsvhs.aicontract.model.SuiteResult;
@@ -41,7 +42,29 @@ class RedactionReporterTest {
         var console = new StringWriter();
         new ConsoleReporter(new PrintWriter(console)).report(result, directory);
         new JsonReporter().report(result, directory);
+        new JunitXmlReporter().report(result, directory);
         assertTrue(console.toString().contains("[REDACTED]"));
         assertTrue(Files.readString(directory.resolve("report.json")).contains("[REDACTED]"));
+        var junitReport = directory.resolve("TEST-ai-contract.xml");
+        assertTrue(Files.readString(junitReport).contains("[REDACTED]"));
+        var document = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+                .newDocumentBuilder()
+                .parse(junitReport.toFile());
+        assertTrue(document.getDocumentElement().getAttribute("failures").equals("1"));
+    }
+
+    @Test
+    void junitXmlEscapesValuesAndRemovesInvalidCharacters(@TempDir Path directory) throws Exception {
+        var result = new SuiteResult(
+                "suite<&>\u0001",
+                List.of(new CaseResult("case<&>", true, 1250, List.of(AssertionResult.passed("status")))));
+
+        new JunitXmlReporter().report(result, directory);
+
+        var document = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+                .newDocumentBuilder()
+                .parse(directory.resolve("TEST-ai-contract.xml").toFile());
+        assertTrue(document.getDocumentElement().getAttribute("name").equals("suite<&>"));
+        assertTrue(document.getDocumentElement().getAttribute("time").equals("1.250"));
     }
 }

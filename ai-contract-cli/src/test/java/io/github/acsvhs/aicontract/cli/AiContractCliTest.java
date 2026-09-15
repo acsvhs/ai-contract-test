@@ -46,6 +46,17 @@ class AiContractCliTest {
     }
 
     @Test
+    void writesJUnitXmlWhenRequested(@TempDir Path directory) throws Exception {
+        var contract = writeContract(directory, baseUrl, 200);
+        var reports = directory.resolve("reports");
+        assertEquals(
+                0,
+                new CommandLine(new AiContractCli())
+                        .execute("run", contract.toString(), "--report", "junit", "--report-dir", reports.toString()));
+        org.junit.jupiter.api.Assertions.assertTrue(Files.isRegularFile(reports.resolve("TEST-ai-contract.xml")));
+    }
+
+    @Test
     void returnsTwoForAnInvalidContract(@TempDir Path directory) throws Exception {
         var contract = directory.resolve("invalid.yaml");
         Files.writeString(contract, "version: \"1\"\n");

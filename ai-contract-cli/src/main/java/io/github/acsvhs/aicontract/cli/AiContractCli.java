@@ -13,6 +13,7 @@ import io.github.acsvhs.aicontract.core.assertion.MaxLatencyAssertion;
 import io.github.acsvhs.aicontract.core.assertion.RegexAbsentAssertion;
 import io.github.acsvhs.aicontract.core.report.ConsoleReporter;
 import io.github.acsvhs.aicontract.core.report.JsonReporter;
+import io.github.acsvhs.aicontract.core.report.JunitXmlReporter;
 import io.github.acsvhs.aicontract.http.HttpTargetAdapter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -42,7 +43,7 @@ public final class AiContractCli implements Runnable {
         @Parameters(index = "0", description = "Contract YAML file")
         private Path contractFile;
 
-        @Option(names = "--report", split = ",", defaultValue = "console", description = "console,json")
+        @Option(names = "--report", split = ",", defaultValue = "console", description = "console,json,junit")
         private List<String> reports;
 
         @Option(names = "--report-dir", defaultValue = "target/ai-contract", description = "Report output directory")
@@ -70,6 +71,7 @@ public final class AiContractCli implements Runnable {
                         case "console" -> new ConsoleReporter(new PrintWriter(System.out, true))
                                 .report(result, reportDirectory);
                         case "json" -> new JsonReporter().report(result, reportDirectory);
+                        case "junit" -> new JunitXmlReporter().report(result, reportDirectory);
                         default -> throw new ContractConfigurationException("Unknown reporter '" + report + "'");
                     }
                 }

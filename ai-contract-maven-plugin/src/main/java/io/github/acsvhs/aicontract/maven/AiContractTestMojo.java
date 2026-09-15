@@ -12,7 +12,10 @@ import io.github.acsvhs.aicontract.core.assertion.JsonSchemaAssertion;
 import io.github.acsvhs.aicontract.core.assertion.MaxLatencyAssertion;
 import io.github.acsvhs.aicontract.core.assertion.RegexAbsentAssertion;
 import io.github.acsvhs.aicontract.core.report.ConsoleReporter;
+import io.github.acsvhs.aicontract.core.report.JunitXmlReporter;
 import io.github.acsvhs.aicontract.http.HttpTargetAdapter;
+import io.github.acsvhs.aicontract.model.CaseResult;
+import io.github.acsvhs.aicontract.model.SuiteResult;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -65,12 +68,20 @@ public final class AiContractTestMojo extends AbstractMojo {
         }
 
         var failedCases = new java.util.ArrayList<String>();
+        var reportCases = new java.util.ArrayList<CaseResult>();
         for (var contractFile : contractFiles) {
             try {
                 var contract = new ContractParser(getLog()::warn).parse(contractFile, Map.of());
                 var redactor = new DefaultSecretRedactor(secretVariableValues(contract.variables()));
                 var result = runner(redactor).run(contract, contractFile);
                 new ConsoleReporter(new PrintWriter(System.out, true)).report(result, reportsDirectory.toPath());
+                result.cases().stream()
+                        .map(caseResult -> new CaseResult(
+                                contractFile.getFileName() + ":" + caseResult.caseId(),
+                                caseResult.passed(),
+                                caseResult.durationMs(),
+                                caseResult.assertions()))
+                        .forEach(reportCases::add);
                 result.cases().stream()
                         .filter(caseResult -> !caseResult.passed())
                         .map(caseResult -> contractFile.getFileName() + ":" + caseResult.caseId())
@@ -80,6 +91,11 @@ public final class AiContractTestMojo extends AbstractMojo {
             } catch (ContractExecutionException exception) {
                 throw new MojoExecutionException("AI contract execution failed: " + exception.getMessage(), exception);
             }
+        }
+        try {
+            new JunitXmlReporter().report(new SuiteResult("ai-contract", reportCases), reportsDirectory.toPath());
+        } catch (IOException exception) {
+            throw new MojoExecutionException("Cannot write AI contract report: " + exception.getMessage(), exception);
         }
         if (!failedCases.isEmpty()) {
             throw new MojoFailureException("AI contract failures: " + String.join(", ", failedCases));

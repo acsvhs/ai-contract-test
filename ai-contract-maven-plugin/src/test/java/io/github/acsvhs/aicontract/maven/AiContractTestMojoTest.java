@@ -47,6 +47,7 @@ class AiContractTestMojoTest {
 
         writeContract(contracts.resolve("contract.yaml"), 200);
         assertDoesNotThrow(mojo::execute);
+        org.junit.jupiter.api.Assertions.assertTrue(Files.isRegularFile(reports.resolve("TEST-ai-contract.xml")));
 
         writeContract(contracts.resolve("contract.yaml"), 201);
         assertThrows(MojoFailureException.class, mojo::execute);

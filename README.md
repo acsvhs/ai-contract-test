@@ -32,7 +32,7 @@ jwebserver -p 8080 &
 AI_CONTRACT_BASE_URL=http://127.0.0.1:8080 java -jar ai-contract-cli/target/ai-contract-cli-0.1.0-SNAPSHOT.jar run examples/contracts/demo-pass.yaml --report console,json
 ```
 
-The command returns `0` when all cases pass, `1` for contract assertion failures, `2` for invalid contracts/configuration, and `3` for execution or infrastructure errors. JSON is written to `target/ai-contract/report.json` only when requested. Response bodies are not printed on success; failed excerpts are capped and redacted.
+The command returns `0` when all cases pass, `1` for contract assertion failures, `2` for invalid contracts/configuration, and `3` for execution or infrastructure errors. Request `--report console,json,junit` to combine console output, `report.json`, and `TEST-ai-contract.xml` under the report directory. Response bodies are not printed on success; failed excerpts are capped and redacted.
 
 ## Contract example
 
@@ -87,7 +87,7 @@ After building this unreleased snapshot locally, bind the plugin to `verify`. It
 </plugin>
 ```
 
-Override the directory with `<contractsDirectory>...</contractsDirectory>` or `-DaiContract.contractsDirectory=...`; use `-DaiContract.skip=true` to skip execution. These coordinates have not been published to a package repository.
+Override the directory with `<contractsDirectory>...</contractsDirectory>` or `-DaiContract.contractsDirectory=...`; use `-DaiContract.skip=true` to skip execution. The plugin writes a standard `TEST-ai-contract.xml` report under `target/ai-contract`. These coordinates have not been published to a package repository.
 
 ## JUnit 5 integration
 
