@@ -89,6 +89,19 @@ After building this unreleased snapshot locally, bind the plugin to `verify`. It
 
 Override the directory with `<contractsDirectory>...</contractsDirectory>` or `-DaiContract.contractsDirectory=...`; use `-DaiContract.skip=true` to skip execution. These coordinates have not been published to a package repository.
 
+## JUnit 5 integration
+
+The unreleased `ai-contract-junit5` module exposes each contract case as a JUnit 5 dynamic test:
+
+```java
+@TestFactory
+Stream<DynamicTest> assistantContracts() {
+    return AiContractTests.from(Path.of("src/test/ai-contract/assistant.yaml"));
+}
+```
+
+Use the overload that accepts a `Map<String, String>` to provide variables programmatically. Failed contract assertions become ordinary JUnit assertion failures; invalid contracts and transport errors remain test errors.
+
 ## Architecture
 
 The Maven modules follow a one-way dependency graph: `model` contains immutable values, `core` owns parsing and execution, `adapter-http` performs HTTP calls, and the CLI and Maven plugin wire those pieces for their respective entry points. See [ADR 0001](docs/adr/0001-core-architecture.md).

@@ -14,8 +14,8 @@ Use Java 21 records for immutable domain values and a one-way module dependency 
 ```text
 model <- core <- adapter-http <- cli
                     ^
-                    |
-               maven-plugin
+                    |--- maven-plugin
+                    |--- junit5
 ```
 
 The versioned YAML contract is strict by default. The core owns parsing, validation, execution interfaces and assertions. Adapters perform I/O. The CLI composes these pieces. HTTP uses the JDK client; Jackson handles YAML/JSON; Picocli is limited to the CLI.
