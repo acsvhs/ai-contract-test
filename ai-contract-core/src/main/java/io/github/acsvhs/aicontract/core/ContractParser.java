@@ -49,8 +49,8 @@ public final class ContractParser {
             var declaredVariables = root == null ? null : root.get("variables");
             if (declaredVariables != null && declaredVariables.isObject()) {
                 declaredVariables
-                        .fields()
-                        .forEachRemaining(entry ->
+                        .properties()
+                        .forEach(entry ->
                                 variables.put(entry.getKey(), entry.getValue().asText()));
             }
             variables.putAll(providedVariables);
@@ -116,7 +116,7 @@ public final class ContractParser {
 
     private void interpolate(JsonNode node, Map<String, String> provided, String file) {
         if (node instanceof ObjectNode object) {
-            object.fields().forEachRemaining(entry -> {
+            object.properties().forEach(entry -> {
                 var value = entry.getValue();
                 if (value.isTextual()) {
                     object.set(entry.getKey(), TextNode.valueOf(resolve(value.textValue(), provided, file)));
