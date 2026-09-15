@@ -41,11 +41,21 @@ public final class ContractRunner {
                     throw new ContractConfigurationException(
                             "No assertion registered for type '" + definition.type() + "'");
                 }
-                assertionResults.add(assertion.evaluate(definition, context));
+                assertionResults.add(sanitize(assertion.evaluate(definition, context)));
             }
             var passed = assertionResults.stream().allMatch(AssertionResult::passed);
-            caseResults.add(new CaseResult(contractCase.id(), passed, response.durationMs(), assertionResults));
+            caseResults.add(new CaseResult(
+                    redactor.redact(contractCase.id()), passed, response.durationMs(), assertionResults));
         }
-        return new SuiteResult(suite.suite().name(), caseResults);
+        return new SuiteResult(redactor.redact(suite.suite().name()), caseResults);
+    }
+
+    private AssertionResult sanitize(AssertionResult result) {
+        return new AssertionResult(
+                redactor.redact(result.type()),
+                result.passed(),
+                redactor.redact(result.expected()),
+                redactor.redact(result.actual()),
+                redactor.redact(result.message()));
     }
 }

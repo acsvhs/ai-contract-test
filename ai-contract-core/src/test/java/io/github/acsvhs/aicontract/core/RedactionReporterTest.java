@@ -20,9 +20,11 @@ class RedactionReporterTest {
     @Test
     void redactsConfiguredAndNamedSecrets() {
         var redactor = new DefaultSecretRedactor(List.of("super-secret-value"));
-        var redacted = redactor.redact(
-                "header Authorization: Bearer abc123 body=super-secret-value exception api_key=visible-no-more");
+        var redacted = redactor.redact("headers={Authorization=[Bearer abc123], Cookie=[session=cookie-secret]} "
+                + "body={\"password\":\"body-secret\"} known=super-secret-value exception api_key=visible-no-more");
         assertFalse(redacted.contains("abc123"));
+        assertFalse(redacted.contains("cookie-secret"));
+        assertFalse(redacted.contains("body-secret"));
         assertFalse(redacted.contains("super-secret-value"));
         assertFalse(redacted.contains("visible-no-more"));
     }

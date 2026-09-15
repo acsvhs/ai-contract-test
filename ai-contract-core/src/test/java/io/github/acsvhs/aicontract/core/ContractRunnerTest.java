@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.acsvhs.aicontract.core.assertion.HttpStatusAssertion;
 import io.github.acsvhs.aicontract.model.AssertionDefinition;
+import io.github.acsvhs.aicontract.model.AssertionResult;
 import io.github.acsvhs.aicontract.model.ContractCase;
 import io.github.acsvhs.aicontract.model.ContractRequest;
 import io.github.acsvhs.aicontract.model.ContractSuite;
@@ -45,6 +46,48 @@ class ContractRunnerTest {
                 new ContractRunner(List.of(adapter), List.of(new HttpStatusAssertion()), value -> value).run(suite);
         assertEquals(List.of("/one", "/two"), order);
         assertFalse(result.passed());
+    }
+
+    @Test
+    void sanitizesEveryAssertionResultBeforeReporting() throws Exception {
+        var definition = new ObjectMapper().readValue("{\"type\":\"unsafe\"}", AssertionDefinition.class);
+        var suite = new ContractSuite(
+                "1",
+                new SuiteDefinition("suite super-secret-value", null, 100, List.of()),
+                Map.of(),
+                new TargetDefinition("http", "http://localhost", Map.of()),
+                List.of(contractCase("case super-secret-value", definition)));
+        TargetAdapter adapter = new TargetAdapter() {
+            @Override
+            public String type() {
+                return "http";
+            }
+
+            @Override
+            public TargetResponse execute(TargetDefinition target, ContractRequest request, int timeoutMs) {
+                return new TargetResponse(200, Map.of("Authorization", List.of("Bearer header-secret")), "", 1);
+            }
+        };
+        ContractAssertion assertion = new ContractAssertion() {
+            @Override
+            public String type() {
+                return "unsafe";
+            }
+
+            @Override
+            public AssertionResult evaluate(AssertionDefinition ignored, ExecutionContext context) {
+                return AssertionResult.failed(
+                        "unsafe", "password=expected-secret", "api_key=actual-secret", "super-secret-value");
+            }
+        };
+
+        var result = new ContractRunner(
+                        List.of(adapter), List.of(assertion), new DefaultSecretRedactor(List.of("super-secret-value")))
+                .run(suite);
+        var serialized = new ObjectMapper().writeValueAsString(result);
+        assertFalse(serialized.contains("super-secret-value"));
+        assertFalse(serialized.contains("expected-secret"));
+        assertFalse(serialized.contains("actual-secret"));
     }
 
     private ContractCase contractCase(String id, AssertionDefinition assertion) {

@@ -48,9 +48,10 @@ public final class AiContractCli implements Runnable {
 
         @Override
         public Integer call() {
+            var redactor = new DefaultSecretRedactor(List.of());
             try {
                 var contract = new ContractParser().parse(contractFile, Map.of());
-                var redactor = new DefaultSecretRedactor(secretVariableValues(contract.variables()));
+                redactor = new DefaultSecretRedactor(secretVariableValues(contract.variables()));
                 var runner = new ContractRunner(
                         List.of(new HttpTargetAdapter()),
                         List.of(
@@ -70,10 +71,10 @@ public final class AiContractCli implements Runnable {
                 }
                 return result.passed() ? 0 : 1;
             } catch (ContractConfigurationException exception) {
-                System.err.println("Invalid contract: " + exception.getMessage());
+                System.err.println("Invalid contract: " + redactor.redact(exception.getMessage()));
                 return 2;
             } catch (ContractExecutionException | IOException exception) {
-                System.err.println("Execution error: " + exception.getMessage());
+                System.err.println("Execution error: " + redactor.redact(exception.getMessage()));
                 return 3;
             }
         }
