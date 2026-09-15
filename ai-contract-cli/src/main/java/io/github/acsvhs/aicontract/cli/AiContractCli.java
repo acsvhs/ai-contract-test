@@ -35,7 +35,11 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
-@Command(name = "ai-contract", mixinStandardHelpOptions = true, subcommands = AiContractCli.RunCommand.class)
+@Command(
+        name = "ai-contract",
+        mixinStandardHelpOptions = true,
+        versionProvider = AiContractCli.VersionProvider.class,
+        subcommands = AiContractCli.RunCommand.class)
 public final class AiContractCli implements Runnable {
     @Override
     public void run() {
@@ -45,6 +49,16 @@ public final class AiContractCli implements Runnable {
     public static void main(String[] args) {
         int exitCode = new CommandLine(new AiContractCli()).execute(args);
         System.exit(exitCode);
+    }
+
+    public static final class VersionProvider implements CommandLine.IVersionProvider {
+        @Override
+        public String[] getVersion() {
+            var implementationVersion = AiContractCli.class.getPackage().getImplementationVersion();
+            return new String[] {
+                "AI Contract Test " + (implementationVersion == null ? "development" : implementationVersion)
+            };
+        }
     }
 
     @Command(name = "run", description = "Run an AI contract YAML file.")

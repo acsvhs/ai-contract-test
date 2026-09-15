@@ -29,7 +29,7 @@ Build the executable CLI, start any local HTTP endpoint, and point the example c
 ```bash
 ./mvnw package
 jwebserver -p 8080 &
-AI_CONTRACT_BASE_URL=http://127.0.0.1:8080 java -jar ai-contract-cli/target/ai-contract-cli-0.1.0-SNAPSHOT.jar run examples/contracts/demo-pass.yaml --report console,json
+AI_CONTRACT_BASE_URL=http://127.0.0.1:8080 java -jar ai-contract-cli/target/ai-contract-cli-0.1.0-alpha.1.jar run examples/contracts/demo-pass.yaml --report console,json
 ```
 
 The command returns `0` when all cases pass, `1` for contract assertion failures, `2` for invalid contracts/configuration, and `3` for execution or infrastructure errors. Request `--report console,json,junit` to combine console output, `report.json`, and `TEST-ai-contract.xml` under the report directory. Response bodies are not printed on success; failed excerpts are capped and redacted.
@@ -72,13 +72,13 @@ JSON Schema files are resolved relative to the contract file and must remain ins
 
 ## Maven integration
 
-After building this unreleased snapshot locally, bind the plugin to `verify`. It reads `*.yaml` and `*.yml` files directly inside `src/test/ai-contract` by default and fails the build when any contract case fails:
+Until the Maven modules are published to a package repository, build them locally and bind the plugin to `verify`. It reads `*.yaml` and `*.yml` files directly inside `src/test/ai-contract` by default and fails the build when any contract case fails:
 
 ```xml
 <plugin>
   <groupId>io.github.acsvhs</groupId>
   <artifactId>ai-contract-maven-plugin</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1.0-alpha.1</version>
   <executions>
     <execution>
       <goals><goal>test</goal></goals>
@@ -91,7 +91,7 @@ Override the directory with `<contractsDirectory>...</contractsDirectory>` or `-
 
 ## JUnit 5 integration
 
-The unreleased `ai-contract-junit5` module exposes each contract case as a JUnit 5 dynamic test:
+The `ai-contract-junit5` module exposes each contract case as a JUnit 5 dynamic test after a local `./mvnw install`:
 
 ```java
 @TestFactory
@@ -118,8 +118,8 @@ Use `record` only when response persistence is intentional. Cassettes contain a 
 normalized tool calls and token usage, plus a fingerprint of the sanitized request:
 
 ```bash
-java -jar ai-contract-cli/target/ai-contract-cli-0.1.0-SNAPSHOT.jar run contract.yaml --mode record
-java -jar ai-contract-cli/target/ai-contract-cli-0.1.0-SNAPSHOT.jar run contract.yaml --mode replay
+java -jar ai-contract-cli/target/ai-contract-cli-0.1.0-alpha.1.jar run contract.yaml --mode record
+java -jar ai-contract-cli/target/ai-contract-cli-0.1.0-alpha.1.jar run contract.yaml --mode replay
 ```
 
 The default directory is `target/ai-contract/cassettes`. Maven accepts

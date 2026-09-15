@@ -3,6 +3,8 @@ package io.github.acsvhs.aicontract.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.sun.net.httpserver.HttpServer;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -40,6 +42,15 @@ class AiContractCliTest {
     @Test
     void returnsZeroWhenAllAssertionsPass(@TempDir Path directory) throws Exception {
         assertEquals(0, run(writeContract(directory, baseUrl, 200)));
+    }
+
+    @Test
+    void identifiesTheCliVersion() {
+        var output = new StringWriter();
+        var command = new CommandLine(new AiContractCli()).setOut(new PrintWriter(output));
+
+        assertEquals(0, command.execute("--version"));
+        org.junit.jupiter.api.Assertions.assertTrue(output.toString().startsWith("AI Contract Test "));
     }
 
     @Test

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <parent><groupId>io.github.acsvhs</groupId><artifactId>ai-contract-test</artifactId><version>0.1.0-SNAPSHOT</version></parent>
+  <parent><groupId>io.github.acsvhs</groupId><artifactId>ai-contract-test</artifactId><version>0.1.0-alpha.1</version></parent>
   <artifactId>ai-contract-cli</artifactId>
   <dependencies>
     <dependency><groupId>io.github.acsvhs</groupId><artifactId>ai-contract-core</artifactId><version>${project.version}</version></dependency>
@@ -30,7 +30,21 @@
       </filters>
       <transformers>
         <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"><mainClass>io.github.acsvhs.aicontract.cli.AiContractCli</mainClass></transformer>
+        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+          <resource>LICENSE</resource>
+          <file>${maven.multiModuleProjectDirectory}/LICENSE</file>
+        </transformer>
+        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+          <resource>THIRD-PARTY-NOTICES.md</resource>
+          <file>${maven.multiModuleProjectDirectory}/THIRD-PARTY-NOTICES.md</file>
+        </transformer>
+        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+          <mainClass>io.github.acsvhs.aicontract.cli.AiContractCli</mainClass>
+          <manifestEntries>
+            <Implementation-Title>AI Contract Test</Implementation-Title>
+            <Implementation-Version>${project.version}</Implementation-Version>
+          </manifestEntries>
+        </transformer>
       </transformers>
     </configuration></execution></executions>
   </plugin></plugins></build>
