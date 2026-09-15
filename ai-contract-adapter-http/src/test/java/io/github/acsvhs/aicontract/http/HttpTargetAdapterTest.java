@@ -1,10 +1,12 @@
 package io.github.acsvhs.aicontract.http;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
+import io.github.acsvhs.aicontract.core.ContractExecutionException;
 import io.github.acsvhs.aicontract.model.ContractRequest;
 import io.github.acsvhs.aicontract.model.TargetDefinition;
 import java.net.InetSocketAddress;
@@ -48,5 +50,14 @@ class HttpTargetAdapterTest {
         assertEquals(201, response.status());
         assertTrue(response.body().contains("q=a+b"));
         assertTrue(response.body().contains("hello"));
+    }
+
+    @Test
+    void enforcesTheConfiguredResponseSizeLimit() {
+        var request = new ContractRequest("GET", "/echo", Map.of(), Map.of(), null);
+        var target = new TargetDefinition("http", baseUrl, Map.of(), 4);
+        var exception = assertThrows(
+                ContractExecutionException.class, () -> new HttpTargetAdapter().execute(target, request, 1000));
+        assertTrue(exception.getMessage().contains("configured 4 byte safety limit"));
     }
 }

@@ -6,7 +6,7 @@ AI Contract Test is an experimental, local-first contract runner for determinist
 
 ## Scope
 
-The current slice targets generic REST endpoints and the deterministic assertions `httpStatus`, `contains`, `regexAbsent`, and `maxLatency`. Requests run sequentially with mandatory timeouts and a 1 MiB response limit. Provider adapters, Maven/JUnit integrations, record/replay and a frontend are deliberately deferred.
+The current slice targets generic REST endpoints and the deterministic assertions `httpStatus`, `contains`, `regexAbsent`, and `maxLatency`. Requests run sequentially with mandatory timeouts and a configurable response limit that defaults to 1 MiB. Provider adapters, Maven/JUnit integrations, record/replay and a frontend are deliberately deferred.
 
 ## Build
 
@@ -44,6 +44,7 @@ suite:
 target:
   type: http
   baseUrl: ${AI_CONTRACT_BASE_URL}
+  maxResponseBytes: 1048576
 cases:
   - id: health-check
     request:

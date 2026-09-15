@@ -17,7 +17,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 public final class HttpTargetAdapter implements TargetAdapter {
-    private static final int MAX_RESPONSE_BYTES = 1024 * 1024;
     private final HttpClient client;
     private final ObjectMapper mapper;
 
@@ -42,12 +41,14 @@ public final class HttpTargetAdapter implements TargetAdapter {
             long started = System.nanoTime();
             var response = client.send(httpRequest, HttpResponse.BodyHandlers.ofInputStream());
             long durationMs = Duration.ofNanos(System.nanoTime() - started).toMillis();
+            int maxResponseBytes = target.effectiveMaxResponseBytes();
             byte[] bytes;
             try (var stream = response.body()) {
-                bytes = stream.readNBytes(MAX_RESPONSE_BYTES + 1);
+                bytes = stream.readNBytes(maxResponseBytes + 1);
             }
-            if (bytes.length > MAX_RESPONSE_BYTES) {
-                throw new ContractExecutionException("HTTP response exceeded the 1 MiB safety limit", null);
+            if (bytes.length > maxResponseBytes) {
+                throw new ContractExecutionException(
+                        "HTTP response exceeded the configured " + maxResponseBytes + " byte safety limit", null);
             }
             return new TargetResponse(
                     response.statusCode(),

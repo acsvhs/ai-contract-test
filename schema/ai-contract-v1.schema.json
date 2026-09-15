@@ -21,7 +21,8 @@
       "type": "object", "additionalProperties": false, "required": ["type", "baseUrl"],
       "properties": {
         "type": { "const": "http" }, "baseUrl": { "type": "string", "minLength": 1 },
-        "headers": { "$ref": "#/$defs/stringMap" }
+        "headers": { "$ref": "#/$defs/stringMap" },
+        "maxResponseBytes": { "type": "integer", "minimum": 1, "maximum": 104857600 }
       }
     },
     "cases": {
