@@ -54,6 +54,7 @@ class ContractParserTest {
                 assertThrows(ContractConfigurationException.class, () -> new ContractParser().parse(file, Map.of()));
         assertTrue(exception.getMessage().contains("contract schema validation failed"));
         assertTrue(exception.getMessage().contains("defaultTimeoutMs"));
+        assertTrue(exception.getMessage().contains("line 2"));
     }
 
     @Test
@@ -66,6 +67,16 @@ class ContractParserTest {
         var exception =
                 assertThrows(ContractConfigurationException.class, () -> new ContractParser().parse(file, Map.of()));
         assertTrue(exception.getMessage().contains("equal"));
+    }
+
+    @Test
+    void reportsLineAndColumnForMalformedYaml(@TempDir Path directory) throws Exception {
+        var file = directory.resolve("malformed.yaml");
+        Files.writeString(file, "version: '1'\nsuite: [broken\n");
+        var exception =
+                assertThrows(ContractConfigurationException.class, () -> new ContractParser().parse(file, Map.of()));
+        assertTrue(exception.getMessage().contains("line 3"));
+        assertTrue(exception.getMessage().contains("column 1"));
     }
 
     @Test

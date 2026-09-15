@@ -2,6 +2,7 @@ package io.github.acsvhs.aicontract.core;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -27,7 +28,8 @@ public final class ContractParser {
             if (!Files.isRegularFile(absolutePath)) {
                 throw new ContractConfigurationException(absolutePath + ": contract file does not exist");
             }
-            JsonNode root = yamlMapper.readTree(absolutePath.toFile());
+            var yaml = Files.readString(absolutePath);
+            JsonNode root = yamlMapper.readTree(yaml);
             var variables = new java.util.HashMap<String, String>();
             var declaredVariables = root == null ? null : root.get("variables");
             if (declaredVariables != null && declaredVariables.isObject()) {
@@ -36,7 +38,7 @@ public final class ContractParser {
                         .forEachRemaining(entry ->
                                 variables.put(entry.getKey(), entry.getValue().asText()));
             }
-            new ContractSchemaValidator().validate(root, absolutePath);
+            new ContractSchemaValidator().validate(yaml, absolutePath);
             variables.putAll(providedVariables);
             interpolate(root, variables, absolutePath.toString());
             var contract = yamlMapper.treeToValue(root, ContractSuite.class);
@@ -45,8 +47,21 @@ public final class ContractParser {
         } catch (ContractConfigurationException exception) {
             throw exception;
         } catch (JsonProcessingException exception) {
+            var location = exception.getLocation();
+            var where =
+                    location == null ? "" : " at line " + location.getLineNr() + ", column " + location.getColumnNr();
+            var logicalReference = exception instanceof JsonMappingException mapping
+                            && !mapping.getPath().isEmpty()
+                    ? " [" + mapping.getPathReference() + "]"
+                    : "";
             throw new ContractConfigurationException(
-                    absolutePath + ": invalid contract: " + exception.getOriginalMessage(), exception);
+                    absolutePath
+                            + ": invalid contract"
+                            + where
+                            + logicalReference
+                            + ": "
+                            + exception.getOriginalMessage(),
+                    exception);
         } catch (IOException exception) {
             throw new ContractConfigurationException(
                     absolutePath + ": cannot read contract: " + exception.getMessage(), exception);
