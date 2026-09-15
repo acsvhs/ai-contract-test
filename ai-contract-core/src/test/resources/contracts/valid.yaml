@@ -1,0 +1,14 @@
+version: "1"
+suite:
+  name: parser-test
+  defaultTimeoutMs: 1000
+target:
+  type: http
+  baseUrl: ${TEST_BASE_URL}
+cases:
+  - id: first
+    request:
+      path: /health
+    assertions:
+      - type: httpStatus
+        equals: 200

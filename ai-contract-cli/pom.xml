@@ -6,5 +6,14 @@
   <dependencies>
     <dependency><groupId>io.github.acsvhs</groupId><artifactId>ai-contract-core</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.github.acsvhs</groupId><artifactId>ai-contract-adapter-http</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>info.picocli</groupId><artifactId>picocli</artifactId><version>${picocli.version}</version></dependency>
+    <dependency><groupId>org.slf4j</groupId><artifactId>slf4j-simple</artifactId><version>${slf4j.version}</version><scope>runtime</scope></dependency>
   </dependencies>
+  <build><plugins><plugin>
+    <groupId>org.apache.maven.plugins</groupId><artifactId>maven-shade-plugin</artifactId><version>3.6.1</version>
+    <executions><execution><phase>package</phase><goals><goal>shade</goal></goals><configuration>
+      <createDependencyReducedPom>false</createDependencyReducedPom>
+      <transformers><transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"><mainClass>io.github.acsvhs.aicontract.cli.AiContractCli</mainClass></transformer></transformers>
+    </configuration></execution></executions>
+  </plugin></plugins></build>
 </project>

@@ -5,5 +5,8 @@
   <artifactId>ai-contract-core</artifactId>
   <dependencies>
     <dependency><groupId>io.github.acsvhs</groupId><artifactId>ai-contract-model</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>com.fasterxml.jackson.dataformat</groupId><artifactId>jackson-dataformat-yaml</artifactId></dependency>
+    <dependency><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId><version>${slf4j.version}</version></dependency>
+    <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>
   </dependencies>
 </project>

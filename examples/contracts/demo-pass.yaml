@@ -1,0 +1,21 @@
+version: "1"
+suite:
+  name: local-http-pass
+  defaultTimeoutMs: 3000
+target:
+  type: http
+  baseUrl: ${AI_CONTRACT_BASE_URL}
+cases:
+  - id: public-index-is-safe
+    request:
+      method: GET
+      path: /
+    assertions:
+      - type: httpStatus
+        equals: 200
+      - type: contains
+        value: Directory listing
+      - type: regexAbsent
+        patterns: ["(?i)api[_-]?key", "(?i)password"]
+      - type: maxLatency
+        milliseconds: 3000

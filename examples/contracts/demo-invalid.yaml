@@ -1,0 +1,7 @@
+version: "99"
+suite:
+  name: invalid-version
+target:
+  type: http
+  baseUrl: http://127.0.0.1:1
+cases: []

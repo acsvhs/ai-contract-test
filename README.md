@@ -2,11 +2,11 @@
 
 AI Contract Test is an experimental, local-first contract runner for deterministic checks against AI-facing HTTP endpoints. It aims to give Java teams a small Pact/JUnit-like safety net without sending contracts or responses to a service operated by this project.
 
-> Status: early `0.x` development. This first commit establishes the Phase 0 foundations; the executable slice follows in Phase 1.
+> Status: experimental `0.x`. The deterministic Phase 1 vertical slice is implemented; APIs and the contract format may still change.
 
 ## Scope
 
-The planned first vertical slice targets generic REST endpoints and the deterministic assertions `httpStatus`, `contains`, `regexAbsent`, and `maxLatency`. Provider adapters, Maven/JUnit integrations, record/replay and a frontend are deliberately deferred.
+The current slice targets generic REST endpoints and the deterministic assertions `httpStatus`, `contains`, `regexAbsent`, and `maxLatency`. Requests run sequentially with mandatory timeouts and a 1 MiB response limit. Provider adapters, Maven/JUnit integrations, record/replay and a frontend are deliberately deferred.
 
 ## Build
 
@@ -21,6 +21,46 @@ On Windows:
 ```powershell
 .\mvnw.cmd verify
 ```
+
+## Quick start
+
+Build the executable CLI, start any local HTTP endpoint, and point the example contract at it. JDK 18+ includes `jwebserver`:
+
+```bash
+./mvnw package
+jwebserver -p 8080 &
+AI_CONTRACT_BASE_URL=http://127.0.0.1:8080 java -jar ai-contract-cli/target/ai-contract-cli-0.1.0-SNAPSHOT.jar run examples/contracts/demo-pass.yaml --report console,json
+```
+
+The command returns `0` when all cases pass, `1` for contract assertion failures, `2` for invalid contracts/configuration, and `3` for execution or infrastructure errors. JSON is written to `target/ai-contract/report.json` only when requested. Response bodies are not printed on success; failed excerpts are capped and redacted.
+
+## Contract example
+
+```yaml
+version: "1"
+suite:
+  name: local-assistant
+  defaultTimeoutMs: 3000
+target:
+  type: http
+  baseUrl: ${AI_CONTRACT_BASE_URL}
+cases:
+  - id: health-check
+    request:
+      method: GET
+      path: /health
+    assertions:
+      - type: httpStatus
+        equals: 200
+      - type: contains
+        value: ok
+      - type: regexAbsent
+        patterns: ["(?i)api[_-]?key", "(?i)password"]
+      - type: maxLatency
+        milliseconds: 3000
+```
+
+Unknown structural fields, duplicate case IDs, missing environment variables and unsupported assertion/target types are configuration errors.
 
 ## Architecture
 

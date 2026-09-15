@@ -1,0 +1,14 @@
+version: "1"
+suite:
+  name: local-http-controlled-failure
+target:
+  type: http
+  baseUrl: ${AI_CONTRACT_BASE_URL}
+cases:
+  - id: expected-controlled-failure
+    request:
+      method: GET
+      path: /
+    assertions:
+      - type: httpStatus
+        equals: 418
