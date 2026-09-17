@@ -1,7 +1,7 @@
 # Third-party notices
 
 The executable AI Contract Test CLI includes the following runtime components. Versions were
-inspected from the `v0.1.0-alpha.1` build metadata and licenses from their locally resolved Maven
+inspected from the project build metadata and licenses from their locally resolved Maven
 POMs.
 
 ## Apache License 2.0

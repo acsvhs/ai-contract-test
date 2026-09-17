@@ -20,6 +20,43 @@ import org.junit.jupiter.api.Test;
 
 class ContractRunnerTest {
     @Test
+    void measuresPassRateAndFlakiness() throws Exception {
+        var assertion =
+                new ObjectMapper().readValue("{\"type\":\"httpStatus\",\"equals\":200}", AssertionDefinition.class);
+        var item = new ContractCase(
+                "repeat",
+                null,
+                List.of(),
+                new ContractRequest("GET", "/", Map.of(), Map.of(), null),
+                List.of(assertion),
+                4,
+                0.75);
+        var calls = new java.util.concurrent.atomic.AtomicInteger();
+        TargetAdapter adapter = new TargetAdapter() {
+            public String type() {
+                return "http";
+            }
+
+            public TargetResponse execute(TargetDefinition target, ContractRequest request, int timeoutMs) {
+                return new TargetResponse(calls.incrementAndGet() == 2 ? 500 : 200, Map.of(), "", 2);
+            }
+        };
+        var suite = new ContractSuite(
+                "1",
+                new SuiteDefinition("demo", null, 100, List.of()),
+                Map.of(),
+                new TargetDefinition("http", "http://localhost", Map.of()),
+                List.of(item));
+        var result =
+                new ContractRunner(List.of(adapter), List.of(new HttpStatusAssertion()), value -> value).run(suite);
+        assertEquals(4, result.cases().getFirst().runs());
+        assertEquals(3, result.cases().getFirst().passedRuns());
+        assertEquals(0.75, result.cases().getFirst().passRate());
+        assertEquals(true, result.cases().getFirst().flaky());
+        assertEquals(true, result.passed());
+    }
+
+    @Test
     void runsCasesSequentiallyAndKeepsFailures() throws Exception {
         var assertion =
                 new ObjectMapper().readValue("{\"type\":\"httpStatus\",\"equals\":200}", AssertionDefinition.class);

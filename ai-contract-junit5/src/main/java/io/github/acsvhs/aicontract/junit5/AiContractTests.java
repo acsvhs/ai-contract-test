@@ -5,6 +5,7 @@ import io.github.acsvhs.aicontract.core.ContractRunner;
 import io.github.acsvhs.aicontract.core.DefaultSecretRedactor;
 import io.github.acsvhs.aicontract.core.assertion.AllowedToolCallsAssertion;
 import io.github.acsvhs.aicontract.core.assertion.ContainsAssertion;
+import io.github.acsvhs.aicontract.core.assertion.EvaluationAssertion;
 import io.github.acsvhs.aicontract.core.assertion.ForbiddenToolCallsAssertion;
 import io.github.acsvhs.aicontract.core.assertion.HttpStatusAssertion;
 import io.github.acsvhs.aicontract.core.assertion.JsonPathAssertion;
@@ -15,8 +16,10 @@ import io.github.acsvhs.aicontract.core.assertion.MaxTokensAssertion;
 import io.github.acsvhs.aicontract.core.assertion.PiiLeakAssertion;
 import io.github.acsvhs.aicontract.core.assertion.RegexAbsentAssertion;
 import io.github.acsvhs.aicontract.core.assertion.SecretLeakAssertion;
+import io.github.acsvhs.aicontract.core.assertion.ToolContractAssertion;
 import io.github.acsvhs.aicontract.http.HttpTargetAdapter;
 import io.github.acsvhs.aicontract.model.ContractSuite;
+import io.github.acsvhs.aicontract.openai.NativeProviderTargetAdapter;
 import io.github.acsvhs.aicontract.openai.OpenAiCompatibleTargetAdapter;
 import java.nio.file.Path;
 import java.util.List;
@@ -64,7 +67,12 @@ public final class AiContractTests {
 
     private static ContractRunner runner(DefaultSecretRedactor redactor) {
         return new ContractRunner(
-                List.of(new HttpTargetAdapter(), new OpenAiCompatibleTargetAdapter()),
+                List.of(
+                        new HttpTargetAdapter(),
+                        new OpenAiCompatibleTargetAdapter(),
+                        new NativeProviderTargetAdapter("openai"),
+                        new NativeProviderTargetAdapter("anthropic"),
+                        new NativeProviderTargetAdapter("gemini")),
                 List.of(
                         new HttpStatusAssertion(),
                         new ContainsAssertion(),
@@ -74,6 +82,13 @@ public final class AiContractTests {
                         new JsonPathAssertion(),
                         new AllowedToolCallsAssertion(),
                         new ForbiddenToolCallsAssertion(),
+                        new ToolContractAssertion("toolCalled"),
+                        new ToolContractAssertion("toolNotCalled"),
+                        new ToolContractAssertion("toolArgs"),
+                        new ToolContractAssertion("toolCallOrder"),
+                        new ToolContractAssertion("maxToolCalls"),
+                        new EvaluationAssertion("semanticSimilarity"),
+                        new EvaluationAssertion("llmJudge"),
                         new MaxTokensAssertion(),
                         new MaxEstimatedCostAssertion(),
                         new SecretLeakAssertion(),

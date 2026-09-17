@@ -7,6 +7,7 @@ import io.github.acsvhs.aicontract.core.ContractRunner;
 import io.github.acsvhs.aicontract.core.DefaultSecretRedactor;
 import io.github.acsvhs.aicontract.core.assertion.AllowedToolCallsAssertion;
 import io.github.acsvhs.aicontract.core.assertion.ContainsAssertion;
+import io.github.acsvhs.aicontract.core.assertion.EvaluationAssertion;
 import io.github.acsvhs.aicontract.core.assertion.ForbiddenToolCallsAssertion;
 import io.github.acsvhs.aicontract.core.assertion.HttpStatusAssertion;
 import io.github.acsvhs.aicontract.core.assertion.JsonPathAssertion;
@@ -17,11 +18,14 @@ import io.github.acsvhs.aicontract.core.assertion.MaxTokensAssertion;
 import io.github.acsvhs.aicontract.core.assertion.PiiLeakAssertion;
 import io.github.acsvhs.aicontract.core.assertion.RegexAbsentAssertion;
 import io.github.acsvhs.aicontract.core.assertion.SecretLeakAssertion;
+import io.github.acsvhs.aicontract.core.assertion.ToolContractAssertion;
 import io.github.acsvhs.aicontract.core.report.ConsoleReporter;
+import io.github.acsvhs.aicontract.core.report.EvaluationReporter;
 import io.github.acsvhs.aicontract.core.report.JunitXmlReporter;
 import io.github.acsvhs.aicontract.http.HttpTargetAdapter;
 import io.github.acsvhs.aicontract.model.CaseResult;
 import io.github.acsvhs.aicontract.model.SuiteResult;
+import io.github.acsvhs.aicontract.openai.NativeProviderTargetAdapter;
 import io.github.acsvhs.aicontract.openai.OpenAiCompatibleTargetAdapter;
 import io.github.acsvhs.aicontract.recorder.ExecutionMode;
 import io.github.acsvhs.aicontract.recorder.RecordingTargetAdapter;
@@ -98,7 +102,11 @@ public final class AiContractTestMojo extends AbstractMojo {
                                 contractFile.getFileName() + ":" + caseResult.caseId(),
                                 caseResult.passed(),
                                 caseResult.durationMs(),
-                                caseResult.assertions()))
+                                caseResult.assertions(),
+                                caseResult.runs(),
+                                caseResult.passedRuns(),
+                                caseResult.passRate(),
+                                caseResult.flaky()))
                         .forEach(reportCases::add);
                 result.cases().stream()
                         .filter(caseResult -> !caseResult.passed())
@@ -111,7 +119,9 @@ public final class AiContractTestMojo extends AbstractMojo {
             }
         }
         try {
-            new JunitXmlReporter().report(new SuiteResult("ai-contract", reportCases), reportsDirectory.toPath());
+            var combined = new SuiteResult("ai-contract", reportCases);
+            new JunitXmlReporter().report(combined, reportsDirectory.toPath());
+            new EvaluationReporter().report(combined, reportsDirectory.toPath());
         } catch (IOException exception) {
             throw new MojoExecutionException("Cannot write AI contract report: " + exception.getMessage(), exception);
         }
@@ -147,7 +157,16 @@ public final class AiContractTestMojo extends AbstractMojo {
                 List.of(
                         new RecordingTargetAdapter(new HttpTargetAdapter(), executionMode, cassetteNamespace, redactor),
                         new RecordingTargetAdapter(
-                                new OpenAiCompatibleTargetAdapter(), executionMode, cassetteNamespace, redactor)),
+                                new OpenAiCompatibleTargetAdapter(), executionMode, cassetteNamespace, redactor),
+                        new RecordingTargetAdapter(
+                                new NativeProviderTargetAdapter("openai"), executionMode, cassetteNamespace, redactor),
+                        new RecordingTargetAdapter(
+                                new NativeProviderTargetAdapter("anthropic"),
+                                executionMode,
+                                cassetteNamespace,
+                                redactor),
+                        new RecordingTargetAdapter(
+                                new NativeProviderTargetAdapter("gemini"), executionMode, cassetteNamespace, redactor)),
                 List.of(
                         new HttpStatusAssertion(),
                         new ContainsAssertion(),
@@ -157,6 +176,13 @@ public final class AiContractTestMojo extends AbstractMojo {
                         new JsonPathAssertion(),
                         new AllowedToolCallsAssertion(),
                         new ForbiddenToolCallsAssertion(),
+                        new ToolContractAssertion("toolCalled"),
+                        new ToolContractAssertion("toolNotCalled"),
+                        new ToolContractAssertion("toolArgs"),
+                        new ToolContractAssertion("toolCallOrder"),
+                        new ToolContractAssertion("maxToolCalls"),
+                        new EvaluationAssertion("semanticSimilarity"),
+                        new EvaluationAssertion("llmJudge"),
                         new MaxTokensAssertion(),
                         new MaxEstimatedCostAssertion(),
                         new SecretLeakAssertion(),

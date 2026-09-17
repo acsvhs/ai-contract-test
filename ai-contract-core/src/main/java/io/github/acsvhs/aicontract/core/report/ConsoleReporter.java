@@ -19,6 +19,16 @@ public final class ConsoleReporter implements ContractReporter {
                 "%d contracts executed - %d passed, %d failed%n",
                 result.cases().size(), result.passedCount(), result.cases().size() - result.passedCount());
         for (var caseResult : result.cases()) {
+            if (caseResult.runs() > 1) {
+                output.printf(
+                        java.util.Locale.ROOT,
+                        "%s: %d/%d passed (%.1f%%)%s%n",
+                        caseResult.caseId(),
+                        caseResult.passedRuns(),
+                        caseResult.runs(),
+                        caseResult.passRate() * 100,
+                        caseResult.flaky() ? " flaky" : "");
+            }
             if (!caseResult.passed()) {
                 output.println();
                 output.println("FAILED: " + caseResult.caseId());

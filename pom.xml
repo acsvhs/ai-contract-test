@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.acsvhs</groupId>
   <artifactId>ai-contract-test</artifactId>
-  <version>0.1.0-alpha.1</version>
+  <version>1.0.0</version>
   <packaging>pom</packaging>
   <name>AI Contract Test</name>
   <description>Local-first deterministic contract testing for AI integrations.</description>
@@ -33,7 +33,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <project.build.outputTimestamp>2026-09-15T00:00:00Z</project.build.outputTimestamp>
+    <project.build.outputTimestamp>2026-09-17T00:00:00Z</project.build.outputTimestamp>
     <maven.compiler.release>21</maven.compiler.release>
     <jackson.version>2.21.0</jackson.version>
     <junit.version>5.13.4</junit.version>

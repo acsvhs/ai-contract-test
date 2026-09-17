@@ -21,6 +21,13 @@ public final class ContractValidator {
             "jsonPath",
             "allowedToolCalls",
             "forbiddenToolCalls",
+            "toolCalled",
+            "toolNotCalled",
+            "toolArgs",
+            "toolCallOrder",
+            "maxToolCalls",
+            "semanticSimilarity",
+            "llmJudge",
             "maxTokens",
             "maxEstimatedCost",
             "secretLeak",
@@ -34,6 +41,17 @@ public final class ContractValidator {
             Map.entry("jsonPath", Set.of("path", "exists", "equals")),
             Map.entry("allowedToolCalls", Set.of("names")),
             Map.entry("forbiddenToolCalls", Set.of("names")),
+            Map.entry("toolCalled", Set.of("name")),
+            Map.entry("toolNotCalled", Set.of("name")),
+            Map.entry("toolArgs", Set.of("name", "path", "equals")),
+            Map.entry("toolCallOrder", Set.of("names")),
+            Map.entry("maxToolCalls", Set.of("maximum")),
+            Map.entry(
+                    "semanticSimilarity",
+                    Set.of("expected", "minimum", "endpoint", "model", "headers", "responsePath", "timeoutMs")),
+            Map.entry(
+                    "llmJudge",
+                    Set.of("expected", "minimum", "endpoint", "model", "headers", "responsePath", "timeoutMs")),
             Map.entry("maxTokens", Set.of("maximum")),
             Map.entry("secretLeak", Set.of("patterns")),
             Map.entry("piiLeak", Set.of("patterns")),
@@ -72,7 +90,9 @@ public final class ContractValidator {
             errors.add("target: is required");
             return;
         }
-        if (!Set.of("http", "openai-compatible").contains(contract.target().type())) {
+        if (contract.target().type() == null
+                || !Set.of("http", "openai-compatible", "openai", "anthropic", "gemini")
+                        .contains(contract.target().type())) {
             errors.add("target.type: unsupported adapter '" + contract.target().type() + "'");
         }
         try {
@@ -98,13 +118,20 @@ public final class ContractValidator {
             if (item.id() != null && !ids.add(item.id())) {
                 errors.add(prefix + ".id: duplicate case ID '" + item.id() + "'");
             }
+            if (item.effectiveRepeat() < 1 || item.effectiveRepeat() > 1000) {
+                errors.add(prefix + ".repeat: must be between 1 and 1000");
+            }
+            if (!Double.isFinite(item.effectiveMinimumPassRate())
+                    || item.effectiveMinimumPassRate() < 0
+                    || item.effectiveMinimumPassRate() > 1) {
+                errors.add(prefix + ".minimumPassRate: must be between 0 and 1");
+            }
             if (item.request() == null) {
                 errors.add(prefix + ".request: is required");
             } else if (item.request().path() == null || !item.request().path().startsWith("/")) {
                 errors.add(prefix + ".request.path: must start with '/'");
-            } else if ("openai-compatible".equals(contract.target().type())
-                    && !"/v1/chat/completions".equals(item.request().path())) {
-                errors.add(prefix + ".request.path: openai-compatible targets require '/v1/chat/completions'");
+            } else {
+                validateRequest(contract.target().type(), item.request(), prefix + ".request", errors);
             }
             if (item.assertions().isEmpty()) {
                 errors.add(prefix + ".assertions: at least one assertion is required");
@@ -113,6 +140,53 @@ public final class ContractValidator {
                 validateAssertion(
                         item.assertions().get(assertionIndex), prefix + ".assertions[" + assertionIndex + "]", errors);
             }
+        }
+    }
+
+    private void validateRequest(
+            String targetType,
+            io.github.acsvhs.aicontract.model.ContractRequest request,
+            String path,
+            java.util.List<String> errors) {
+        if (request.path().contains("?") || request.path().contains("#")) {
+            errors.add(path + ".path: put query parameters in request.query and omit fragments");
+        }
+        if (request.method() != null && !request.method().matches("[A-Za-z]+")) {
+            errors.add(path + ".method: must contain only letters");
+        }
+        String requiredPath = targetType == null
+                ? null
+                : switch (targetType) {
+                    case "openai", "openai-compatible" -> "/v1/chat/completions";
+                    case "anthropic" -> "/v1/messages";
+                    default -> null;
+                };
+        if (requiredPath != null && !requiredPath.equals(request.path())) {
+            errors.add(path + ".path: " + targetType + " targets require '" + requiredPath + "'");
+        }
+        if ("gemini".equals(targetType) && !request.path().matches("/v1beta/models/[^/]+:generateContent")) {
+            errors.add(path + ".path: gemini targets require '/v1beta/models/{model}:generateContent'");
+        }
+        if (targetType == null
+                || !Set.of("openai", "openai-compatible", "anthropic", "gemini").contains(targetType)) return;
+        if (!"POST".equalsIgnoreCase(request.method())) errors.add(path + ".method: " + targetType + " requires POST");
+        var body = request.body();
+        if (body == null || !body.isObject()) {
+            errors.add(path + ".body: " + targetType + " requires an object");
+            return;
+        }
+        if ("gemini".equals(targetType)) {
+            if (!body.path("contents").isArray() || body.path("contents").isEmpty())
+                errors.add(path + ".body.contents: must be a non-empty array");
+        } else {
+            if (!body.path("model").isTextual() || body.path("model").asText().isBlank())
+                errors.add(path + ".body.model: must be a non-empty string");
+            if (!body.path("messages").isArray() || body.path("messages").isEmpty())
+                errors.add(path + ".body.messages: must be a non-empty array");
+            if ("anthropic".equals(targetType)
+                    && (!body.path("max_tokens").isIntegralNumber()
+                            || body.path("max_tokens").asInt() < 1))
+                errors.add(path + ".body.max_tokens: must be a positive integer");
         }
     }
 
@@ -150,6 +224,29 @@ public final class ContractValidator {
             case "jsonSchema" -> requireText(definition.parameter("file"), path + ".file", errors);
             case "jsonPath" -> validateJsonPath(definition, path, errors);
             case "allowedToolCalls", "forbiddenToolCalls" -> requireNames(definition.parameter("names"), path, errors);
+            case "toolCalled", "toolNotCalled" -> requireNonBlankText(
+                    definition.parameter("name"), path + ".name", errors);
+            case "toolArgs" -> {
+                requireNonBlankText(definition.parameter("name"), path + ".name", errors);
+                requireNonBlankText(definition.parameter("path"), path + ".path", errors);
+                if (definition.parameter("equals") == null) errors.add(path + ".equals: is required");
+                if (definition.parameter("path") != null
+                        && definition.parameter("path").isTextual()) {
+                    try {
+                        JsonPath.compile(definition.parameter("path").asText());
+                    } catch (InvalidPathException exception) {
+                        errors.add(path + ".path: invalid JSONPath");
+                    }
+                }
+            }
+            case "toolCallOrder" -> {
+                requireNames(definition.parameter("names"), path, errors);
+                if (definition.parameter("names") != null
+                        && definition.parameter("names").isArray()
+                        && definition.parameter("names").isEmpty()) errors.add(path + ".names: must be non-empty");
+            }
+            case "maxToolCalls" -> requireInteger(definition.parameter("maximum"), path + ".maximum", errors);
+            case "semanticSimilarity", "llmJudge" -> validateEvaluation(definition, path, errors);
             case "secretLeak", "piiLeak" -> requirePatterns(definition.parameter("patterns"), path, errors);
             case "maxTokens" -> requireInteger(definition.parameter("maximum"), path + ".maximum", errors);
             case "maxEstimatedCost" -> {
@@ -164,6 +261,40 @@ public final class ContractValidator {
             }
             default -> throw new IllegalStateException("validated assertion was not handled");
         }
+    }
+
+    private void validateEvaluation(AssertionDefinition definition, String path, java.util.List<String> errors) {
+        requireText(definition.parameter("expected"), path + ".expected", errors);
+        requireNonBlankText(definition.parameter("model"), path + ".model", errors);
+        var minimum = definition.parameter("minimum");
+        if (minimum == null || !minimum.isNumber() || minimum.asDouble() < 0 || minimum.asDouble() > 1) {
+            errors.add(path + ".minimum: must be between 0 and 1");
+        }
+        var endpoint = definition.parameter("endpoint");
+        requireNonBlankText(endpoint, path + ".endpoint", errors);
+        if (endpoint != null && endpoint.isTextual()) {
+            try {
+                var uri = URI.create(endpoint.asText());
+                if (!Set.of("http", "https").contains(uri.getScheme()) || uri.getHost() == null)
+                    errors.add(path + ".endpoint: must be an absolute HTTP(S) URL");
+            } catch (RuntimeException exception) {
+                errors.add(path + ".endpoint: must be an absolute HTTP(S) URL");
+            }
+        }
+        var responsePath = definition.parameter("responsePath");
+        if (responsePath != null) {
+            requireNonBlankText(responsePath, path + ".responsePath", errors);
+            if (responsePath.isTextual()) {
+                try {
+                    JsonPath.compile(responsePath.asText());
+                } catch (InvalidPathException exception) {
+                    errors.add(path + ".responsePath: invalid JSONPath");
+                }
+            }
+        }
+        var timeout = definition.parameter("timeoutMs");
+        if (timeout != null && (!timeout.isIntegralNumber() || timeout.asInt() < 1))
+            errors.add(path + ".timeoutMs: must be positive");
     }
 
     private void validateJsonPath(AssertionDefinition definition, String path, java.util.List<String> errors) {

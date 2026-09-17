@@ -2,8 +2,8 @@
 
 ## Supported versions
 
-AI Contract Test is experimental software. Security fixes are applied to the latest release on the
-default branch; older `0.x` releases are not maintained unless stated otherwise in their release
+AI Contract Test has a stable v1 contract format. Security fixes are applied to the latest release on the
+default branch; older releases are not maintained unless stated otherwise in their release
 notes.
 
 ## Reporting a vulnerability

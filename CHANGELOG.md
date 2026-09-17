@@ -1,7 +1,16 @@
 # Changelog
 
-All notable changes to AI Contract Test are documented here. The project follows semantic
-versioning once its public API stabilizes; `0.x` releases may contain breaking changes.
+All notable changes to AI Contract Test are documented here. The stable contract format uses
+`version: "1"`; breaking format changes require a new format version.
+
+## [1.0.0] - 2026-09-17 (source version)
+
+- Native non-streaming OpenAI, Anthropic and Gemini adapters with normalized token usage and tool calls.
+- Repeated runs, pass rates, flakiness, baseline comparison and model comparison through saved reports.
+- Agent assertions for required/forbidden tools, JSON arguments, call order and maximum calls.
+- JSONL dataset expansion, optional embedding similarity and LLM judge assertions, and numeric evaluation reports.
+- Stable contract format v1 specification, stricter native request validation, strict JSONL parsing,
+  duplicate-key rejection and compatibility tests. No package publication is implied.
 
 ## [0.1.0-alpha.1] - 2026-09-15
 

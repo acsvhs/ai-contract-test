@@ -13,6 +13,67 @@ import org.junit.jupiter.api.io.TempDir;
 
 class ContractParserTest {
     @Test
+    void rejectsDuplicateYamlKeys(@TempDir Path directory) throws Exception {
+        var file = directory.resolve("duplicate-key.yaml");
+        Files.writeString(
+                file,
+                "version: '1'\nsuite: {name: demo, name: other}\n"
+                        + "target: {type: http, baseUrl: 'http://localhost'}\n"
+                        + "cases: [{id: one, request: {path: /}, assertions: [{type: httpStatus, equals: 200}]}]\n");
+        assertThrows(ContractConfigurationException.class, () -> new ContractParser().parse(file, Map.of()));
+    }
+
+    @Test
+    void rejectsNonJsonDatasetRows(@TempDir Path directory) throws Exception {
+        Files.writeString(directory.resolve("rows.jsonl"), "id: yaml-only\n");
+        var file = directory.resolve("dataset.yaml");
+        Files.writeString(
+                file,
+                "version: '1'\nsuite: {name: demo}\n"
+                        + "target: {type: http, baseUrl: 'http://localhost'}\n"
+                        + "cases: [{id: item, dataset: rows.jsonl, request: {path: /}, "
+                        + "assertions: [{type: httpStatus, equals: 200}]}]\n");
+        assertThrows(ContractConfigurationException.class, () -> new ContractParser().parse(file, Map.of()));
+    }
+
+    @Test
+    void rejectsInvalidNativeRequestDuringParsing(@TempDir Path directory) throws Exception {
+        var file = directory.resolve("native.yaml");
+        Files.writeString(
+                file,
+                "version: '1'\nsuite: {name: demo}\n"
+                        + "target: {type: anthropic, baseUrl: 'https://api.anthropic.com'}\n"
+                        + "cases: [{id: one, request: {method: POST, path: /v1/messages, "
+                        + "body: {model: example, messages: [{role: user, content: hi}]}}, "
+                        + "assertions: [{type: httpStatus, equals: 200}]}]\n");
+        var error =
+                assertThrows(ContractConfigurationException.class, () -> new ContractParser().parse(file, Map.of()));
+        assertTrue(error.getMessage().contains("max_tokens"));
+    }
+
+    @Test
+    void expandsJsonlDatasetIntoCases(@TempDir Path directory) throws Exception {
+        Files.writeString(
+                directory.resolve("questions.jsonl"),
+                "{\"id\":\"a\",\"question\":\"Hello\",\"answer\":\"Hi\"}\n"
+                        + "{\"id\":\"b\",\"question\":\"Bye\",\"answer\":\"Goodbye\"}\n");
+        var file = directory.resolve("dataset.yaml");
+        Files.writeString(
+                file,
+                "version: '1'\nsuite: {name: demo}\n"
+                        + "target: {type: http, baseUrl: 'http://localhost'}\n"
+                        + "cases: [{id: faq, dataset: questions.jsonl, request: {path: /, body: '{{question}}'}, "
+                        + "assertions: [{type: contains, value: '{{answer}}'}]}]\n");
+        var suite = new ContractParser().parse(file, Map.of());
+        assertEquals(2, suite.cases().size());
+        assertEquals("faq[a]", suite.cases().getFirst().id());
+        assertEquals("Hello", suite.cases().getFirst().request().body().asText());
+        assertEquals(
+                "Goodbye",
+                suite.cases().get(1).assertions().getFirst().parameter("value").asText());
+    }
+
+    @Test
     void parsesAndInterpolatesExplicitVariables() throws Exception {
         var resource = Path.of(getClass().getResource("/contracts/valid.yaml").toURI());
         var suite = new ContractParser().parse(resource, Map.of("TEST_BASE_URL", "http://localhost:9876"));

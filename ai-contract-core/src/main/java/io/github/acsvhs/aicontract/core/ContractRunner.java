@@ -41,21 +41,58 @@ public final class ContractRunner {
         }
         var caseResults = new ArrayList<CaseResult>();
         for (var contractCase : suite.cases()) {
-            var response = adapter.execute(
-                    suite.target(), contractCase.request(), suite.suite().effectiveTimeoutMs(), contractCase.id());
             var assertionResults = new ArrayList<AssertionResult>();
-            var context = new ExecutionContext(contractCase, response, redactor, contractDirectory);
-            for (var definition : contractCase.assertions()) {
-                var assertion = assertions.get(definition.type());
-                if (assertion == null) {
-                    throw new ContractConfigurationException(
-                            "No assertion registered for type '" + definition.type() + "'");
+            int passedRuns = 0;
+            long durationMs = 0;
+            for (int run = 1; run <= contractCase.effectiveRepeat(); run++) {
+                var response = adapter.execute(
+                        suite.target(),
+                        contractCase.request(),
+                        suite.suite().effectiveTimeoutMs(),
+                        contractCase.id() + (contractCase.effectiveRepeat() == 1 ? "" : "#" + run));
+                durationMs += response.durationMs();
+                var context = new ExecutionContext(contractCase, response, redactor, contractDirectory);
+                boolean runPassed = true;
+                for (var definition : contractCase.assertions()) {
+                    var assertion = assertions.get(definition.type());
+                    if (assertion == null) {
+                        throw new ContractConfigurationException(
+                                "No assertion registered for type '" + definition.type() + "'");
+                    }
+                    var result = sanitize(assertion.evaluate(definition, context));
+                    if (result.passed()
+                            && ("semanticSimilarity".equals(result.type()) || "llmJudge".equals(result.type())))
+                        assertionResults.add(result);
+                    if (!result.passed()) {
+                        runPassed = false;
+                        assertionResults.add(new AssertionResult(
+                                result.type(),
+                                false,
+                                result.expected(),
+                                result.actual(),
+                                "run " + run + ": " + result.message()));
+                    }
                 }
-                assertionResults.add(sanitize(assertion.evaluate(definition, context)));
+                if (runPassed) passedRuns++;
             }
-            var passed = assertionResults.stream().allMatch(AssertionResult::passed);
+            double passRate = (double) passedRuns / contractCase.effectiveRepeat();
+            boolean passed = passRate >= contractCase.effectiveMinimumPassRate();
+            if (!passed) {
+                assertionResults.add(AssertionResult.failed(
+                        "passRate",
+                        ">= " + contractCase.effectiveMinimumPassRate(),
+                        Double.toString(passRate),
+                        "Pass rate below minimum"));
+            }
             caseResults.add(new CaseResult(
-                    redactor.redact(contractCase.id()), passed, response.durationMs(), assertionResults));
+                    redactor.redact(contractCase.id()),
+                    passed,
+                    durationMs,
+                    assertionResults,
+                    contractCase.effectiveRepeat(),
+                    passedRuns,
+                    passRate,
+                    passedRuns > 0 && passedRuns < contractCase.effectiveRepeat()));
         }
         return new SuiteResult(redactor.redact(suite.suite().name()), caseResults);
     }

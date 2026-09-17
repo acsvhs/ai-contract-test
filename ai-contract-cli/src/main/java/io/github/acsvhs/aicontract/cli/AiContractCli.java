@@ -7,6 +7,7 @@ import io.github.acsvhs.aicontract.core.ContractRunner;
 import io.github.acsvhs.aicontract.core.DefaultSecretRedactor;
 import io.github.acsvhs.aicontract.core.assertion.AllowedToolCallsAssertion;
 import io.github.acsvhs.aicontract.core.assertion.ContainsAssertion;
+import io.github.acsvhs.aicontract.core.assertion.EvaluationAssertion;
 import io.github.acsvhs.aicontract.core.assertion.ForbiddenToolCallsAssertion;
 import io.github.acsvhs.aicontract.core.assertion.HttpStatusAssertion;
 import io.github.acsvhs.aicontract.core.assertion.JsonPathAssertion;
@@ -17,10 +18,13 @@ import io.github.acsvhs.aicontract.core.assertion.MaxTokensAssertion;
 import io.github.acsvhs.aicontract.core.assertion.PiiLeakAssertion;
 import io.github.acsvhs.aicontract.core.assertion.RegexAbsentAssertion;
 import io.github.acsvhs.aicontract.core.assertion.SecretLeakAssertion;
+import io.github.acsvhs.aicontract.core.assertion.ToolContractAssertion;
 import io.github.acsvhs.aicontract.core.report.ConsoleReporter;
+import io.github.acsvhs.aicontract.core.report.EvaluationReporter;
 import io.github.acsvhs.aicontract.core.report.JsonReporter;
 import io.github.acsvhs.aicontract.core.report.JunitXmlReporter;
 import io.github.acsvhs.aicontract.http.HttpTargetAdapter;
+import io.github.acsvhs.aicontract.openai.NativeProviderTargetAdapter;
 import io.github.acsvhs.aicontract.openai.OpenAiCompatibleTargetAdapter;
 import io.github.acsvhs.aicontract.recorder.ExecutionMode;
 import io.github.acsvhs.aicontract.recorder.RecordingTargetAdapter;
@@ -66,7 +70,11 @@ public final class AiContractCli implements Runnable {
         @Parameters(index = "0", description = "Contract YAML file")
         private Path contractFile;
 
-        @Option(names = "--report", split = ",", defaultValue = "console", description = "console,json,junit")
+        @Option(
+                names = "--report",
+                split = ",",
+                defaultValue = "console",
+                description = "console,json,junit,evaluation")
         private List<String> reports;
 
         @Option(names = "--report-dir", defaultValue = "target/ai-contract", description = "Report output directory")
@@ -80,6 +88,9 @@ public final class AiContractCli implements Runnable {
                 defaultValue = "target/ai-contract/cassettes",
                 description = "Cassette directory for record/replay")
         private Path cassetteDirectory;
+
+        @Option(names = "--baseline", description = "Previous JSON report for pass-rate comparison")
+        private Path baseline;
 
         @Override
         public Integer call() {
@@ -96,6 +107,21 @@ public final class AiContractCli implements Runnable {
                                         new OpenAiCompatibleTargetAdapter(),
                                         executionMode,
                                         cassetteDirectory,
+                                        redactor),
+                                new RecordingTargetAdapter(
+                                        new NativeProviderTargetAdapter("openai"),
+                                        executionMode,
+                                        cassetteDirectory,
+                                        redactor),
+                                new RecordingTargetAdapter(
+                                        new NativeProviderTargetAdapter("anthropic"),
+                                        executionMode,
+                                        cassetteDirectory,
+                                        redactor),
+                                new RecordingTargetAdapter(
+                                        new NativeProviderTargetAdapter("gemini"),
+                                        executionMode,
+                                        cassetteDirectory,
                                         redactor)),
                         List.of(
                                 new HttpStatusAssertion(),
@@ -106,22 +132,31 @@ public final class AiContractCli implements Runnable {
                                 new JsonPathAssertion(),
                                 new AllowedToolCallsAssertion(),
                                 new ForbiddenToolCallsAssertion(),
+                                new ToolContractAssertion("toolCalled"),
+                                new ToolContractAssertion("toolNotCalled"),
+                                new ToolContractAssertion("toolArgs"),
+                                new ToolContractAssertion("toolCallOrder"),
+                                new ToolContractAssertion("maxToolCalls"),
+                                new EvaluationAssertion("semanticSimilarity"),
+                                new EvaluationAssertion("llmJudge"),
                                 new MaxTokensAssertion(),
                                 new MaxEstimatedCostAssertion(),
                                 new SecretLeakAssertion(),
                                 new PiiLeakAssertion()),
                         redactor);
                 var result = runner.run(contract, contractFile);
+                boolean noRegression = baseline == null || ReportComparison.compare(result, baseline);
                 for (var report : reports) {
                     switch (report) {
                         case "console" -> new ConsoleReporter(new PrintWriter(System.out, true))
                                 .report(result, reportDirectory);
                         case "json" -> new JsonReporter().report(result, reportDirectory);
                         case "junit" -> new JunitXmlReporter().report(result, reportDirectory);
+                        case "evaluation" -> new EvaluationReporter().report(result, reportDirectory);
                         default -> throw new ContractConfigurationException("Unknown reporter '" + report + "'");
                     }
                 }
-                return result.passed() ? 0 : 1;
+                return result.passed() && noRegression ? 0 : 1;
             } catch (ContractConfigurationException exception) {
                 System.err.println("Invalid contract: " + redactor.redact(exception.getMessage()));
                 return 2;
